@@ -1,0 +1,24 @@
+<h3>{{ index !== null ? 'Editar viaje' : 'Nuevo viaje' }}</h3>
+
+<form (ngSubmit)="guardar()" #formulario="ngForm">
+  <div>
+    <label for="destino">Destino:</label>
+    <input type="text" id="destino" [(ngModel)]="viaje.destino" name="destino" required />
+  </div>
+
+  <div>
+    <label for="fecha">Fecha:</label>
+    <input type="date" id="fecha" [(ngModel)]="viaje.fecha" name="fecha" required />
+  </div>
+
+  <div>
+    <label for="descripcion">Descripción:</label>
+    <textarea id="descripcion" [(ngModel)]="viaje.descripcion" name="descripcion"></textarea>
+  </div>
+
+  <button type="submit" [disabled]="formulario.invalid">
+    {{ index !== null ? 'Actualizar viaje' : 'Agregar viaje' }}
+  </button>
+</form>
+
+

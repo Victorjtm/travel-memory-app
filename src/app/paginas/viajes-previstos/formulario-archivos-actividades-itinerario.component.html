@@ -1,0 +1,87 @@
+<div class="contenedor" [class.modo-edicion]="modoEdicion">
+    <h2>{{ modoEdicion ? 'Editar Archivo' : 'Archivos de la Actividad' }}</h2>
+  
+    <!-- Formulario para agregar/editar archivos -->
+    <div class="formulario-subida">
+      <h3>{{ modoEdicion ? 'Editar metadatos y archivo' : 'Añadir nuevos archivos' }}</h3>
+      <form (ngSubmit)="subirArchivos()" #formArchivos="ngForm" enctype="multipart/form-data">
+        
+        <!-- Selector de archivos (visible siempre para permitir cambio en edición) -->
+        <div class="campo-formulario">
+          <label><i class="fa fa-file-upload"></i> Seleccionar archivo {{ modoEdicion ? '(nuevo reemplaza al anterior)' : '' }}:</label>
+          <input type="file" 
+                 id="archivosInput" 
+                 [multiple]="!modoEdicion" 
+                 (change)="onFileSelected($event)" 
+                 accept="image/*,video/*,audio/*,.txt,.pdf,.doc,.docx"
+                 [required]="!modoEdicion && archivosSeleccionados.length === 0">
+          <small *ngIf="!modoEdicion">Puedes seleccionar múltiples archivos</small>
+        </div>
+  
+        <!-- Tipo de archivo -->
+        <div class="campo-formulario">
+          <label><i class="fa fa-tags"></i> Tipo de archivo:</label>
+          <select [(ngModel)]="nuevoArchivo.tipo" name="tipo" required>
+            <option value="foto">Foto</option>
+            <option value="video">Video</option>
+            <option value="audio">Audio</option>
+            <option value="texto">Texto</option>
+            <option value="imagen">Imagen (gráfico/dibujo)</option>
+          </select>
+        </div>
+  
+        <!-- Descripción -->
+        <div class="campo-formulario">
+          <label><i class="fa fa-align-left"></i> Descripción:</label>
+          <textarea [(ngModel)]="nuevoArchivo.descripcion" name="descripcion"></textarea>
+        </div>
+  
+        <!-- Hora de captura -->
+        <div class="campo-formulario">
+          <label><i class="fa fa-clock"></i> Hora de captura:</label>
+          <input type="time" [(ngModel)]="nuevoArchivo.horaCaptura" name="horaCaptura">
+        </div>
+  
+        <!-- Geolocalización -->
+        <div class="campo-formulario">
+          <label><i class="fa fa-map-marker-alt"></i> Ubicación:</label>
+          <div class="grupo-geolocalizacion">
+            <button type="button" (click)="capturarGeolocalizacion()">
+              <i class="fa fa-crosshairs"></i> Obtener ubicación
+            </button>
+            <input type="text" [(ngModel)]="nuevoArchivo.geolocalizacion" 
+                   name="geolocalizacion" placeholder="Coordenadas o dirección">
+          </div>
+        </div>
+  
+        <!-- Previsualización de archivos (solo en creación) -->
+        <div *ngIf="!modoEdicion && archivosSeleccionados.length > 0" class="previsualizacion">
+          <h4>Archivos a subir:</h4>
+          <ul>
+            <li *ngFor="let archivo of archivosSeleccionados">
+              {{archivo.name}} ({{archivo.size | filesize}})
+            </li>
+          </ul>
+        </div>
+  
+        <!-- Previsualización archivo nuevo en edición -->
+        <div *ngIf="modoEdicion && archivoNuevoSeleccionado" class="previsualizacion">
+          <h4>Archivo nuevo seleccionado para reemplazar:</h4>
+          <p>{{ archivoNuevoSeleccionado.name }} ({{ archivoNuevoSeleccionado.size | filesize }})</p>
+        </div>
+  
+        <!-- Botón de submit -->
+        <button type="submit" 
+                [disabled]="!formArchivos.form.valid || (!modoEdicion && archivosSeleccionados.length === 0)"
+                class="{{ modoEdicion ? 'btn-actualizar' : 'btn-subir' }}">
+          <i class="fa {{ modoEdicion ? 'fa-save' : 'fa-cloud-upload-alt' }}"></i> 
+          {{ modoEdicion ? 'Guardar Cambios' : 'Subir Archivos' }}
+        </button>
+      </form>
+    </div>
+  
+    <button class="btn-volver" (click)="volverAActividad()">
+      <i class="fa fa-arrow-left"></i> Volver a la Actividad
+    </button>
+  </div>
+  

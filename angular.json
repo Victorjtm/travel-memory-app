@@ -29,15 +29,32 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/font-awesome/css",
+                "output": "/assets/font-awesome/css"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/font-awesome/fonts",
+                "output": "/assets/font-awesome/fonts"
               }
             ],
             "styles": [
-              "src/styles.scss"
+              "src/styles.scss",
+              "node_modules/font-awesome/css/font-awesome.min.css"
             ],
             "scripts": []
           },
           "configurations": {
             "production": {
+                "fileReplacements": [
+                   {
+                    "replace": "src/environments/environment.ts",
+                    "with": "src/environments/environment.prod.ts"
+              }
+             ],
               "budgets": [
                 {
                   "type": "initial",

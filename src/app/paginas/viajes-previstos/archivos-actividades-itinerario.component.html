@@ -1,0 +1,143 @@
+  <div class="contenedor">
+    <h2 *ngIf="actividadId">Archivos para la Actividad {{ actividadId }}</h2>
+
+    <!-- Botón para añadir nuevo archivo -->
+    <button
+      [routerLink]="[
+        '/viajes-previstos',
+        viajePrevistoId,
+        'itinerarios',
+        itinerarioId,
+        'actividades',
+        actividadId,
+        'archivos',
+        'nuevo'
+      ]"
+      class="btn-agregar"
+    >
+      <i class="fa fa-plus-circle"></i> Añadir Archivo
+    </button>
+
+    <!-- Formulario de nuevo/editar (rutas hijas) -->
+    <router-outlet></router-outlet>
+
+    <hr>
+
+    <!-- Lista de archivos o mensaje si no hay -->
+    <div *ngIf="archivos && archivos.length > 0; else sinArchivos" class="lista-archivos">
+      <div *ngFor="let archivo of archivos" class="archivo-item">
+        <!-- Visualización del archivo multimedia -->
+        <div class="preview-container">
+          <div *ngIf="archivo.tipo === 'foto' || archivo.tipo === 'imagen'" class="image-preview">
+            <img 
+              [src]="getFileUrl(archivo)" 
+              [alt]="archivo.descripcion || 'Imagen sin descripción'"
+              (click)="abrirModal(archivo)"
+              class="clickable-media"
+            >
+          </div>
+
+          <div *ngIf="archivo.tipo === 'video'" class="video-preview">
+            <video 
+              controls
+              (click)="abrirModal(archivo)"
+              class="clickable-media"
+            >
+              <source [src]="getFileUrl(archivo)" [type]="'video/' + getFileExtension(archivo.nombreArchivo)">
+              Tu navegador no soporta el elemento de video.
+            </video>
+          </div>
+
+          <div *ngIf="archivo.tipo === 'audio'" class="audio-preview">
+            <audio 
+              controls
+              (click)="abrirModal(archivo)"
+              class="clickable-media"
+            >
+              <source [src]="getFileUrl(archivo)" [type]="'audio/' + getFileExtension(archivo.nombreArchivo)">
+              Tu navegador no soporta el elemento de audio.
+            </audio>
+          </div>
+        </div>
+
+        <!-- Metadatos del archivo -->
+        <div class="info-archivo">
+          <h3>{{ archivo.nombreArchivo }}</h3>
+          <p><strong>Tipo:</strong> {{ archivo.tipo }}</p>
+          <p><strong>Descripción:</strong> {{ archivo.descripcion || 'Sin descripción' }}</p>
+          <p><strong>Hora de captura:</strong> {{ archivo.horaCaptura || 'No especificada' }}</p>
+          <p><strong>Geolocalización:</strong> {{ archivo.geolocalizacion || 'No disponible' }}</p>
+          <p><strong>Creación:</strong> {{ archivo.fechaCreacion | date:'dd/MM/yyyy' }}</p>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="acciones">
+          <button class="btn-descargar" (click)="descargarArchivo(archivo.id)" title="Descargar">
+            <i class="fa fa-download"></i>
+          </button>
+          <button class="btn-eliminar" (click)="eliminarArchivo(archivo.id)" title="Eliminar">
+            <i class="fa fa-trash"></i>
+          </button>
+          <button
+            class="btn-actualizar"
+            [routerLink]="[
+              '/viajes-previstos',
+              viajePrevistoId,
+              'itinerarios',
+              itinerarioId,
+              'actividades',
+              actividadId,
+              'archivos',
+              'editar',
+              archivo.id
+            ]"
+            title="Editar"
+          >
+            <i class="fa fa-edit"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <ng-template #sinArchivos>
+      <p class="sin-archivos"><em>No hay archivos registrados para esta actividad.</em></p>
+    </ng-template>
+
+    <!-- Modal de visualización ampliada -->
+    <div class="modal-backdrop" *ngIf="archivoSeleccionado" (click)="cerrarModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <button class="btn-cerrar-modal" (click)="cerrarModal()">
+          <i class="fa fa-times"></i>
+        </button>
+        
+        <!-- Contenido del modal según tipo de archivo -->
+        <div *ngIf="archivoSeleccionado.tipo === 'foto' || archivoSeleccionado.tipo === 'imagen'">
+          <img [src]="getFileUrl(archivoSeleccionado)" [alt]="archivoSeleccionado.descripcion">
+        </div>
+        
+        <div *ngIf="archivoSeleccionado.tipo === 'video'">
+          <video controls autoplay>
+            <source [src]="getFileUrl(archivoSeleccionado)" [type]="'video/' + getFileExtension(archivoSeleccionado.nombreArchivo)">
+            Tu navegador no soporta el elemento de video.
+          </video>
+        </div>
+        
+        <div *ngIf="archivoSeleccionado.tipo === 'audio'">
+          <audio controls autoplay>
+            <source [src]="getFileUrl(archivoSeleccionado)" [type]="'audio/' + getFileExtension(archivoSeleccionado.nombreArchivo)">
+            Tu navegador no soporta el elemento de audio.
+          </audio>
+        </div>
+        
+        <div class="modal-info">
+          <h3>{{ archivoSeleccionado.nombreArchivo }}</h3>
+          <p><strong>Descripción:</strong> {{ archivoSeleccionado.descripcion || 'Sin descripción' }}</p>
+          <p><strong>Fecha:</strong> {{ archivoSeleccionado.fechaCreacion | date:'dd/MM/yyyy' }}</p>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-volver" (click)="volverAItinerario()">
+      <i class="fa fa-arrow-left"></i> Volver a Itinerario
+    </button>
+  </div>

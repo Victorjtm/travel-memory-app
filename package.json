@@ -1,13 +1,16 @@
 {
   "name": "travel-memory-app",
   "version": "0.0.0",
-  "scripts": {
-    "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "watch": "ng build --watch --configuration development",
-    "test": "ng test"
-  },
+"scripts": {
+  "ng": "ng",
+  "build": "ng build",
+  "watch": "ng build --watch --configuration development",
+  "test": "ng test",
+  "start": "npm-run-all --parallel start:backend start:frontend",
+  "start:frontend": "ng serve --host 0.0.0.0 --disable-host-check",
+  "start:backend": "node src/app/server.js",
+  "start:prod": "npm run build && cross-env NODE_ENV=production PORT=4000 node src/app/server.js"
+},
   "private": true,
   "dependencies": {
     "@angular/animations": "^19.1.0",
@@ -18,7 +21,18 @@
     "@angular/platform-browser": "^19.1.0",
     "@angular/platform-browser-dynamic": "^19.1.0",
     "@angular/router": "^19.1.0",
+    "@fortawesome/angular-fontawesome": "^1.0.0",
+    "@fortawesome/fontawesome-svg-core": "^6.7.2",
+    "@fortawesome/free-solid-svg-icons": "^6.7.2",
+    "cors": "^2.8.5",
+    "exif-parser": "^0.1.12",
+    "exiftool-vendored": "^30.2.0",
+    "express": "^4.18.2",
+    "font-awesome": "^4.7.0",
+    "multer": "^2.0.0",
+    "ngx-lightbox": "^3.0.0",
     "rxjs": "~7.8.0",
+    "sqlite3": "^5.1.7",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
   },
@@ -27,12 +41,14 @@
     "@angular/cli": "^19.1.8",
     "@angular/compiler-cli": "^19.1.0",
     "@types/jasmine": "~5.1.0",
+    "cross-env": "^7.0.3",
     "jasmine-core": "~5.5.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
+    "npm-run-all": "^4.1.5",
     "typescript": "~5.7.2"
   }
 }
