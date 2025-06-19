@@ -39,6 +39,11 @@ app.use(bodyParser.json());
 
 // ✅ Servir archivos estáticos desde la carpeta "uploads"
 const uploadsPath = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath, { recursive: true });
+  console.log('✅ Carpeta uploads creada:', uploadsPath);
+}
+
 console.log('📁 Sirviendo archivos estáticos desde:', uploadsPath);
 app.use('/uploads', express.static(uploadsPath));
 
@@ -794,7 +799,7 @@ app.put('/archivos/:id', (req, res) => {
 
 // 6️⃣ POST subir múltiples archivos (con procesamiento EXIF)
 app.post('/archivos/subir', upload.array('archivos'), async (req, res) => {
-  const { actividadId, tipo, descripcion, horaCaptura } = req.body;
+  const { actividadId, tipo, descripcion, horaCaptura, geolocalizacion } = req.body;
   const archivos = req.files;
 
   if (!archivos?.length) {
@@ -802,10 +807,71 @@ app.post('/archivos/subir', upload.array('archivos'), async (req, res) => {
   }
 
   const resultados = [];
+  
   for (const archivo of archivos) {
-    // ... (mantén tu lógica existente de procesamiento EXIF)
-    // ... (insertar en base de datos)
+    try {
+      // Procesamiento EXIF (ejemplo básico)
+      let metadatos = {};
+      let horaExif = null;
+      
+      if (['image/jpeg', 'image/tiff'].includes(archivo.mimetype)) {
+        const buffer = fs.readFileSync(archivo.path);
+        const parser = ExifParser.create(buffer);
+        const exifData = parser.parse();
+        
+if (exifData.tags?.DateTimeOriginal) {
+  const dt = exifData.tags.DateTimeOriginal;
+  if (typeof dt === 'number') {
+    // Si es un timestamp (segundos desde 1970)
+    horaExif = new Date(dt * 1000).toISOString();
+  } else if (typeof dt === 'string') {
+    // Si es string tipo "YYYY:MM:DD HH:MM:SS"
+    const dateStr = dt.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3').replace(' ', 'T');
+    horaExif = new Date(dateStr).toISOString();
+  } else if (dt instanceof Date) {
+    horaExif = dt.toISOString();
+  } else {
+    // Si no se puede convertir, ignora
+    horaExif = null;
   }
+}
+        metadatos = exifData.tags || {};
+      }
+
+      // Insertar en base de datos
+const stmt = await db.prepare(
+  `INSERT INTO archivos 
+  (actividadId, tipo, nombreArchivo, rutaArchivo, descripcion, horaCaptura, geolocalizacion, metadatos) 
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+);
+
+await stmt.run(
+  actividadId,
+  tipo || archivo.mimetype.split('/')[0],
+  archivo.originalname,
+  archivo.path,
+  descripcion || '',
+  horaCaptura || horaExif || new Date().toISOString(),
+  geolocalizacion || '',
+  JSON.stringify(metadatos)
+);
+      
+      resultados.push({
+        id: stmt.lastID,
+        nombre: archivo.originalname,
+        estado: 'subido',
+        metadatos: Object.keys(metadatos).length > 0 ? metadatos : null
+      });
+
+    } catch (error) {
+      resultados.push({
+        nombre: archivo?.originalname || 'desconocido',
+        estado: 'error',
+        error: error.message
+      });
+    }
+  }
+
   res.status(201).json(resultados);
 });
 
