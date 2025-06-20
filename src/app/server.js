@@ -1,6 +1,8 @@
 // Importar las dependencias
 const fs = require('fs');
 const ExifParser = require('exif-parser');
+const { promisify } = require('util');
+const readFileAsync = promisify(fs.readFile);
 const { exiftool } = require('exiftool-vendored');
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
@@ -220,6 +222,51 @@ db.run(
     }
   }
 );
+
+// Extraer fecha y hora de un archivo (EXIF o metadatos del sistema)
+async function getFileMetadata(filePath, fileType) {
+  try {
+    // 1. Intenta leer EXIF (imágenes)
+    if (['image/jpeg', 'image/png'].includes(fileType)) {
+      const buffer = await readFileAsync(filePath);
+      const parser = ExifParser.create(buffer);
+      const result = parser.parse();
+
+      if (result.tags?.DateTimeOriginal) {
+        let fecha = '';
+        let hora = '';
+        const dt = result.tags.DateTimeOriginal;
+        if (typeof dt === 'number') {
+          const d = new Date(dt * 1000);
+          fecha = d.toISOString().split('T')[0];
+          hora = d.toTimeString().substring(0, 5);
+        } else if (typeof dt === 'string') {
+          // "YYYY:MM:DD HH:MM:SS"
+          const dateStr = dt.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3').replace(' ', 'T');
+          const d = new Date(dateStr);
+          fecha = d.toISOString().split('T')[0];
+          hora = d.toTimeString().substring(0, 5);
+        } else if (dt instanceof Date) {
+          fecha = dt.toISOString().split('T')[0];
+          hora = dt.toTimeString().substring(0, 5);
+        }
+        return { fecha, hora };
+      }
+    }
+    // 2. Fallback a metadatos del sistema
+    const stats = fs.statSync(filePath);
+    return {
+      fecha: new Date(stats.mtime).toISOString().split('T')[0],
+      hora: new Date(stats.mtime).toTimeString().substring(0, 5)
+    };
+  } catch (error) {
+    console.error('Error leyendo metadatos:', error);
+    return {
+      fecha: new Date().toISOString().split('T')[0],
+      hora: new Date().toTimeString().substring(0, 5)
+    };
+  }
+}
 
 // ----------------------------------------
 // RUTAS PARA Viajes
@@ -713,6 +760,50 @@ app.get('/archivos', (req, res) => {
     res.json(rows);
   });
 });
+
+// Ruta para buscar coincidencias de actividades por fecha/hora de archivo
+app.post('/archivos/buscar-coincidencias', upload.single('archivo'), async (req, res) => {
+  try {
+    const { actividadId } = req.body;
+    const metadata = await getFileMetadata(req.file.path, req.file.mimetype);
+
+    const query = `
+      SELECT a.id, a.nombre, a.horaInicio, a.horaFin, i.fechaInicio, i.fechaFin, a.viajePrevistoId, a.itinerarioId
+      FROM actividades a
+      JOIN ItinerarioGeneral i ON a.itinerarioId = i.id
+      WHERE DATE(?) BETWEEN DATE(i.fechaInicio) AND DATE(i.fechaFin)
+        AND TIME(?) BETWEEN TIME(a.horaInicio) AND TIME(a.horaFin)
+    `;
+
+    const actividades = await new Promise((resolve, reject) => {
+      db.all(query, [metadata.fecha, metadata.hora], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+
+    // Obtener la actividad actual si fue pasada
+    async function getActividad(id) {
+      return new Promise(resolve => {
+        db.get('SELECT id, nombre, horaInicio, horaFin FROM actividades WHERE id = ?', [id], (err, row) => {
+          resolve(row || null);
+        });
+      });
+    }
+
+    const actividadActual = actividadId ? await getActividad(actividadId) : null;
+
+    res.json({
+      metadata,
+      actividadesCoincidentes: actividades || [],
+      actividadActual
+    });
+  } catch (error) {
+    console.error('[buscar-coincidencias] Error:', error);
+    res.status(500).json({ error: "Error buscando coincidencias" });
+  }
+});
+
 
 // 2️⃣ GET archivo individual por ID
 app.get('/archivos/:id', (req, res) => {

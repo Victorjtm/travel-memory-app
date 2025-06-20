@@ -2,9 +2,9 @@
     <h2>Actividades para el itinerario {{ itinerarioId }}</h2>
   
     <!-- Botón para añadir una nueva actividad -->
-    <button [routerLink]="['/formulario-actividad', itinerarioId]" class="btn-agregar">
-      <i class="fa fa-plus-circle"></i> Añadir Actividad
-    </button>
+    <button [routerLink]="['/formulario-actividad', viajePrevistoId, itinerarioId, 'nuevo']" class="btn-agregar">
+  <i class="fa fa-plus-circle"></i> Añadir Actividad
+</button>
   
     <hr>
   

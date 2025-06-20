@@ -48,21 +48,37 @@ export class FormularioActividadItinerarioComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.route.params.subscribe(params => {
-      this.viajePrevistoId = +params['viajePrevistoId'];
-      this.itinerarioId = +params['itinerarioId'];
-      this.actividadId = +params['actividadId'];
+  this.route.params.subscribe(params => {
+    this.viajePrevistoId = +params['viajePrevistoId'];
+    this.itinerarioId = +params['itinerarioId'];
+    const actividadIdParam = params['actividadId'];
 
+    if (actividadIdParam === 'nuevo') {
+      // Modo creación: no cargar actividad existente
+      this.actividadId = 0;
+      this.actividad = {
+        id: 0,
+        viajePrevistoId: this.viajePrevistoId,
+        itinerarioId: this.itinerarioId,
+        tipoActividadId: 0,
+        actividadDisponibleId: null,
+        nombre: '',
+        descripcion: '',
+        horaInicio: '09:00',
+        horaFin: '10:00'
+      };
+    } else {
+      this.actividadId = +actividadIdParam;
       this.actividad.viajePrevistoId = this.viajePrevistoId;
       this.actividad.itinerarioId = this.itinerarioId;
-
-      this.cargarTiposActividad();
-
       if (this.actividadId) {
         this.cargarActividadExistente();
       }
-    });
-  }
+    }
+
+    this.cargarTiposActividad();
+  });
+}
 
   cargarTiposActividad(): void {
     this.tiposActividadService.getTiposActividad().subscribe(

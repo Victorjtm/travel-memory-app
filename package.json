@@ -1,23 +1,25 @@
 {
   "name": "travel-memory-app",
   "version": "0.0.0",
-"scripts": {
-  "ng": "ng",
-  "build": "ng build",
-  "watch": "ng build --watch --configuration development",
-  "test": "ng test",
-  "start": "npm-run-all --parallel start:backend start:frontend",
-  "start:frontend": "ng serve --host 0.0.0.0 --disable-host-check",
-  "start:backend": "node src/app/server.js",
-  "start:prod": "npm run build && cross-env NODE_ENV=production PORT=4000 node src/app/server.js"
-},
+  "scripts": {
+    "ng": "ng",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test",
+    "start": "npm-run-all --parallel start:backend start:frontend",
+    "start:frontend": "ng serve --host 0.0.0.0 --disable-host-check",
+    "start:backend": "node src/app/server.js",
+    "start:prod": "npm run build && cross-env NODE_ENV=production PORT=4000 node src/app/server.js"
+  },
   "private": true,
   "dependencies": {
     "@angular/animations": "^19.1.0",
+    "@angular/cdk": "^19.2.18",
     "@angular/common": "^19.1.0",
     "@angular/compiler": "^19.1.0",
     "@angular/core": "^19.1.0",
     "@angular/forms": "^19.1.0",
+    "@angular/material": "^19.2.18",
     "@angular/platform-browser": "^19.1.0",
     "@angular/platform-browser-dynamic": "^19.1.0",
     "@angular/router": "^19.1.0",

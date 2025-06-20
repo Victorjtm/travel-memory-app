@@ -121,8 +121,9 @@ export class ActividadesItinerariosComponent implements OnInit {
   }
 
   volverAItinerarios(): void {
-    this.router.navigate(['/viajes-previstos', this.viajePrevistoId, 'itinerarios']);
-  }
+  console.log('Volver a itinerarios:', this.viajePrevistoId);
+  this.router.navigate(['/itinerarios', this.viajePrevistoId]);
+}
 
   verArchivos(actividadId: number, event: Event): void {
     console.log('CLICK detectado - ID:', actividadId);
