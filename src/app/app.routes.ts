@@ -13,6 +13,7 @@ import { TipoActividadFormComponent } from './paginas/configuracion/crud-tipos-a
 // Nuevos componentes para actividades disponibles
 import { ActividadesDisponiblesComponent } from './paginas/configuracion/actividades-disponibles/actividades-disponibles.component';
 import { FormularioActividadComponent } from './paginas/configuracion/actividades-disponibles/formulario-actividad/formulario-actividad.component';
+import { AlbumLibroComponent } from './paginas/viajes-previstos/itinerario/album-libro/album-libro.component';
 
 export const routes: Routes = [
   { path: '', component: InicioComponent },
@@ -74,6 +75,12 @@ export const routes: Routes = [
     path: 'viajes-previstos/:viajePrevistoId/itinerarios/:itinerarioId/actividades/:actividadId/archivos/editar/:archivoId',
     loadComponent: () => import('./paginas/viajes-previstos/formulario-archivos-actividades-itinerario.component').then(m => m.FormularioArchivosComponent)
   },
+
+  // Ruta para ver formato de libro
+  {
+  path: 'viajes-previstos/:viajeId/itinerarios/:itinerarioId/actividades/:actividadId/libro',
+  component: AlbumLibroComponent
+},
 
   { path: '**', redirectTo: '' }
 ];

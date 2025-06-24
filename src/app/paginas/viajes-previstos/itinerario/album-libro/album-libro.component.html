@@ -1,0 +1,94 @@
+<div class="libro-container" [class.portada-abierta]="estado === 'abierto'" role="main" aria-label="Álbum de viaje">
+
+  <!-- Portada -->
+  <div 
+    class="portada" 
+    *ngIf="estado === 'portada'" 
+    (click)="abrirLibro()" 
+    role="button" 
+    tabindex="0" 
+    aria-label="Abrir álbum"
+  >
+    <div class="lomo" aria-hidden="true"></div>
+    <div class="titulo-portada">
+      <h1>Álbum de Viaje</h1>
+      <p>Recuerdos guardados</p>
+    </div>
+  </div>
+
+  <!-- Contenido del libro -->
+  <section 
+    class="contenido-libro" 
+    [class.contenido-visible]="estado === 'abierto'"
+    aria-label="Contenido del álbum"
+  >
+    <button 
+      class="btn-cerrar" 
+      (click)="volver()" 
+      title="Cerrar álbum" 
+      aria-label="Cerrar álbum"
+    >
+      <i class="fas fa-times" aria-hidden="true"></i>
+    </button>
+
+    <!-- Página actual -->
+    <article 
+      class="pagina" 
+      *ngIf="paginas[paginaActual]" 
+      role="region" 
+      aria-label="Página del álbum"
+    >
+      <figure class="media-container" (click)="abrirFullscreen(paginas[paginaActual].imagen)">
+        <img 
+          [src]="paginas[paginaActual].imagen" 
+          [alt]="paginas[paginaActual].titulo" 
+          loading="lazy"
+        />
+      </figure>
+
+      <div class="descripcion">
+        <h2>{{ paginas[paginaActual].titulo }}</h2>
+        <p>{{ paginas[paginaActual].descripcion }}</p>
+        <p class="fecha">{{ paginas[paginaActual].fecha | date:'longDate' }}</p>
+      </div>
+    </article>
+
+    <!-- Controles de página -->
+    <nav 
+      class="controles-pagina" 
+      role="navigation" 
+      aria-label="Navegación de páginas"
+    >
+      <button 
+        class="btn-pagina" 
+        (click)="cambiarPagina(-1)" 
+        [disabled]="paginaActual === 0"
+        aria-label="Página anterior"
+      >
+        <i class="fas fa-chevron-left" aria-hidden="true"></i>
+      </button>
+
+      <span class="contador-pagina" aria-live="polite">
+        {{ paginaActual + 1 }} / {{ paginas.length }}
+      </span>
+
+      <button 
+        class="btn-pagina" 
+        (click)="cambiarPagina(1)" 
+        [disabled]="paginaActual === paginas.length - 1"
+        aria-label="Página siguiente"
+      >
+        <i class="fas fa-chevron-right" aria-hidden="true"></i>
+      </button>
+    </nav>
+  </section>
+
+  <!-- Modo Pantalla Completa -->
+  <div class="modo-pantalla-completa" [class.activo]="mostrarFullscreen" (click)="cerrarFullscreen()">
+    <img [src]="imagenFullscreen" class="imagen-fullscreen" (click)="$event.stopPropagation()">
+    <button class="btn-cerrar-fullscreen" (click)="cerrarFullscreen(); $event.stopPropagation()">
+      &times;
+    </button>
+  </div>
+
+</div>

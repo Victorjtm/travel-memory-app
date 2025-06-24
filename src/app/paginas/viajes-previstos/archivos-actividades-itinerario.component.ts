@@ -148,4 +148,16 @@ getFileUrl(archivo: Archivo): string {
       'actividades'
     ]);
   }
+  verEnFormatoLibro(): void {
+  this.router.navigate([
+    '/viajes-previstos',
+    this.viajePrevistoId,
+    'itinerarios',
+    this.itinerarioId,
+    'actividades',
+    this.actividadId,
+    'libro'
+  ]);
+}
+
 }
