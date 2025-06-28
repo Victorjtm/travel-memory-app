@@ -16,6 +16,16 @@ export class ArchivoService {
     return this.http.get<Archivo[]>(`${this.apiUrl}?actividadId=${actividadId}`);
   }
 
+  getArchivosPorViaje(viajeId: number): Observable<Archivo[]> {
+  const url = `${this.apiUrl}/viaje/${viajeId}`;
+  console.log('🌐 Endpoint llamado:', url);
+  return this.http.get<Archivo[]>(url);
+}
+
+  getArchivosPorItinerario(itinerarioId: number): Observable<Archivo[]> {
+  return this.http.get<Archivo[]>(`${this.apiUrl}?itinerarioId=${itinerarioId}`);
+}
+
   getArchivo(id: number): Observable<Archivo> {
     return this.http.get<Archivo>(`${this.apiUrl}/${id}`);
   }
@@ -45,26 +55,26 @@ export class ArchivoService {
   }
 
   buscarCoincidencias(
-  file: File,
-  viajePrevistoId: number,
-  actividadId?: number
-): Observable<{
-  metadata: { fecha: string; hora: string };
-  actividadesCoincidentes: any[];
-  actividadActual: any | null;
-}> {
-  const formData = new FormData();
-  formData.append('archivo', file);
-  formData.append('viajePrevistoId', viajePrevistoId.toString());
-  if (actividadId) formData.append('actividadId', actividadId.toString());
-
-  return this.http.post<{
+    file: File,
+    viajePrevistoId: number,
+    actividadId?: number
+  ): Observable<{
     metadata: { fecha: string; hora: string };
     actividadesCoincidentes: any[];
     actividadActual: any | null;
-  }>(
-    `${this.apiUrl}/buscar-coincidencias`,
-    formData
-  );
-}
+  }> {
+    const formData = new FormData();
+    formData.append('archivo', file);
+    formData.append('viajePrevistoId', viajePrevistoId.toString());
+    if (actividadId) formData.append('actividadId', actividadId.toString());
+
+    return this.http.post<{
+      metadata: { fecha: string; hora: string };
+      actividadesCoincidentes: any[];
+      actividadActual: any | null;
+    }>(
+      `${this.apiUrl}/buscar-coincidencias`,
+      formData
+    );
+  }
 }

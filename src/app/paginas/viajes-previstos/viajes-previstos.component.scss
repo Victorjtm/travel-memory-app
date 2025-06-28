@@ -162,3 +162,32 @@ button i {
     width: 100%; /* El botón de agregar ocupará todo el ancho */
   }
 }
+
+.btn-album {
+  background-color: #c49b6e; /* color piel antigua */
+  color: white;
+  border: none;
+  border-radius: 6px 12px 12px 6px; /* forma parecida a un libro abierto */
+  padding: 12px 20px;
+  font-family: 'Georgia', serif;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: inset -4px 0 6px rgba(0, 0, 0, 0.2), 0 4px 8px rgba(0, 0, 0, 0.2);
+  border-left: 6px solid #8b5e3c; /* lomo del libro */
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.btn-album:hover {
+  background-color: #b07d4f;
+  transform: scale(1.02);
+  box-shadow: inset -4px 0 6px rgba(0, 0, 0, 0.25), 0 6px 10px rgba(0, 0, 0, 0.25);
+}
+
+.btn-album i {
+  margin-right: 8px; /* espacio entre icono y texto */
+}

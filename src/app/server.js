@@ -761,6 +761,33 @@ app.get('/archivos', (req, res) => {
   });
 });
 
+// ----------------------------------------
+// NUEVO: GET archivos por viaje
+// ----------------------------------------
+app.get('/archivos/viaje/:viajeId', (req, res) => {
+  const { viajeId } = req.params;
+  
+  console.log('🎯 Obteniendo archivos para viajeId:', viajeId);
+  
+  const sql = `
+    SELECT a.* 
+    FROM archivos a
+    INNER JOIN actividades act ON a.actividadId = act.id
+    WHERE act.viajePrevistoId = ?
+    ORDER BY a.fechaCreacion
+  `;
+  
+  db.all(sql, [viajeId], (err, rows) => {
+    if (err) {
+      console.error('❌ Error obteniendo archivos por viaje:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+    
+    console.log(`✅ Encontrados ${rows.length} archivos para viaje ${viajeId}`);
+    res.json(rows);
+  });
+});
+
 // Ruta para buscar coincidencias de actividades por fecha/hora de archivo
 app.post('/archivos/buscar-coincidencias', upload.single('archivo'), async (req, res) => {
   try {

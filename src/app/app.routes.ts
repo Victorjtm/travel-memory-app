@@ -76,6 +76,12 @@ export const routes: Routes = [
     loadComponent: () => import('./paginas/viajes-previstos/formulario-archivos-actividades-itinerario.component').then(m => m.FormularioArchivosComponent)
   },
 
+  // Rutas para el álbum en formato libro desde viajes previstos
+  {
+  path: 'viajes-previstos/:viajeId/itinerarios/album/libro',
+  component: AlbumLibroComponent
+},
+
   // Ruta para ver formato de libro
   {
   path: 'viajes-previstos/:viajeId/itinerarios/:itinerarioId/actividades/:actividadId/libro',

@@ -8,6 +8,14 @@
         <p class="descripcion">{{ viaje.descripcion }}</p>
       </div>
       <div class="acciones">
+        <button 
+  (click)="verAlbumEnLibro(viaje.id)" 
+  class="btn-album">
+  <i class="fa fa-book"></i> Álbum
+</button>
+
+
+
         <button (click)="eliminarViaje(i)" class="btn-eliminar">
           <i class="fa fa-trash"></i> Eliminar
         </button>

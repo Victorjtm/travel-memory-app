@@ -1,17 +1,16 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterModule } from '@angular/router'; // IMPORTANTE: RouterModule aquí
+import { Router, RouterModule } from '@angular/router';
 import { ViajesPrevistosService } from '../../servicios/viajes-previstos.service';
-import { Observable } from 'rxjs';
-import { HttpClientModule } from '@angular/common/http'; // 👈 IMPORTANTE
+import { HttpClientModule } from '@angular/common/http';
 
 @Component({
   selector: 'app-viajes-previstos',
   standalone: true,
   imports: [
     CommonModule,
-    HttpClientModule,  // 👈 AÑADIDO AQUÍ
-    RouterModule       // IMPORTANTE: Asegúrate de incluir RouterModule aquí
+    HttpClientModule,
+    RouterModule
   ],
   templateUrl: './viajes-previstos.component.html',
   styleUrls: ['./viajes-previstos.component.scss']
@@ -57,5 +56,13 @@ export class ViajesPrevistosComponent implements OnInit {
 
   irAEditarViaje(id: number) {
     this.router.navigate(['/formulario-viaje-previsto', id]);
+  }
+
+  // Cambiado para recibir el id del viaje y usarlo para navegar
+  verAlbumEnLibro(viajeId: number): void {
+    this.router.navigate(
+      ['/viajes-previstos', viajeId, 'itinerarios', 'album', 'libro'],
+      { queryParams: { origen: 'viaje' } }
+    );
   }
 }
