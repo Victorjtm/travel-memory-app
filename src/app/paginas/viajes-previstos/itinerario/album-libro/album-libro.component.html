@@ -8,34 +8,41 @@
   <!-- ========================================= -->
   <!-- Solo visible cuando estado === 'portada' -->
   <!-- Contiene el título, descripción e información contextual -->
-  <div 
-    class="portada" 
-    *ngIf="estado === 'portada'" 
-    (click)="abrirLibro()" 
-    role="button" 
-    tabindex="0" 
-    aria-label="Abrir álbum"
-    (keydown.enter)="abrirLibro()"
-    (keydown.space)="abrirLibro()"
-  >
+  <div class="portada" *ngIf="estado === 'portada'" (click)="abrirLibro()" role="button" tabindex="0"
+    aria-label="Abrir álbum" (keydown.enter)="abrirLibro()" (keydown.space)="abrirLibro()">
     <!-- Elemento visual del lomo del libro -->
     <div class="lomo" aria-hidden="true"></div>
-    
+
     <!-- Contenido de la portada -->
     <div class="titulo-portada">
-      <!-- Título dinámico según contexto -->
-      <h1>{{ getTituloContextual() }}</h1>
-      
-      <!-- Descripción con número de imágenes -->
+      <!-- Nombre real del viaje (si está disponible) -->
+      <ng-container *ngIf="infoViaje as info">
+        <h1>{{ info.nombre || getTituloContextual() }}</h1>
+
+        <p *ngIf="info.fechaInicio">
+          <strong>Fechas:</strong>
+          {{ info.fechaInicio | date:'longDate' }}
+          <span *ngIf="info.fechaFin"> – {{ info.fechaFin | date:'longDate' }}</span>
+        </p>
+      </ng-container>
+
+      <!-- Fallback si no hay infoViaje -->
+      <ng-container *ngIf="!infoViaje">
+        <h1>{{ getTituloContextual() }}</h1>
+      </ng-container>
+
+
+      <!-- Descripción del álbum (número de imágenes) -->
       <p>{{ getDescripcionContextual() }}</p>
-      
-      <!-- Información del contexto (viaje, itinerario, actividad) -->
+
+
+      <!-- Información del contexto (viaje, itinerario, actividad) 
       <div class="info-contexto" *ngIf="contextoViaje">
         <p class="id-viaje">Viaje #{{ contextoViaje.viajeId }}</p>
         <p class="id-itinerario" *ngIf="contextoViaje.itinerarioId">Itinerario #{{ contextoViaje.itinerarioId }}</p>
         <p class="id-actividad" *ngIf="contextoViaje.actividadId">Actividad #{{ contextoViaje.actividadId }}</p>
-      </div>
-      
+      </div> -->  
+
       <!-- Instrucción para abrir -->
       <p class="instruccion">Haz clic para abrir</p>
     </div>
@@ -45,40 +52,27 @@
   <!-- BLOQUE 2: CONTENIDO DEL LIBRO ABIERTO   -->
   <!-- ========================================= -->
   <!-- Solo visible cuando estado === 'abierto' -->
-  <section 
-    class="contenido-libro" 
-    [class.contenido-visible]="estado === 'abierto'"
-    aria-label="Contenido del álbum"
-  >
+  <section class="contenido-libro" [class.contenido-visible]="estado === 'abierto'" aria-label="Contenido del álbum">
     <!-- ===== SUBBLOQUE 2.1: BOTÓN CERRAR ===== -->
-    <button 
-      class="btn-cerrar" 
-      (click)="volver()" 
-      title="Cerrar álbum y volver" 
-      aria-label="Cerrar álbum y volver al contexto anterior"
-    >
+    <button class="btn-cerrar" (click)="volver()" title="Cerrar álbum y volver"
+      aria-label="Cerrar álbum y volver al contexto anterior">
       <i class="fas fa-times" aria-hidden="true"></i>
     </button>
 
     <!-- ===== SUBBLOQUE 2.2: CONTENIDO DE LA PÁGINA ACTUAL ===== -->
-    <article 
-      class="pagina" 
-      *ngIf="paginas[paginaActual]" 
-      role="region" 
-      aria-label="Página del álbum"
-    >
+    <article class="pagina" *ngIf="paginas[paginaActual]" role="region" aria-label="Página del álbum">
       <!-- --- PÁGINA ÍNDICE --- -->
       <div class="pagina-indice" *ngIf="paginas[paginaActual].esIndice">
         <div class="contenido-indice">
           <h2>{{ paginas[paginaActual].titulo }}</h2>
-          
+
           <!-- Información del álbum -->
           <div class="info-album">
             <div class="estadisticas">
               <p><strong>Total de imágenes:</strong> {{ paginas.length - 1 }}</p>
               <p><strong>Contexto:</strong> {{ getNivelContexto() }}</p>
             </div>
-            
+
             <!-- Detalles específicos del contexto -->
             <div class="detalles-contexto" *ngIf="contextoViaje">
               <p><strong>ID Viaje:</strong> {{ contextoViaje.viajeId }}</p>
@@ -86,7 +80,7 @@
               <p *ngIf="contextoViaje.actividadId"><strong>ID Actividad:</strong> {{ contextoViaje.actividadId }}</p>
             </div>
           </div>
-          
+
           <!-- Instrucciones de uso -->
           <div class="instrucciones">
             <p>Usa las flechas para navegar entre las páginas</p>
@@ -97,77 +91,58 @@
 
       <!-- --- PÁGINA DE IMAGEN --- -->
       <ng-container *ngIf="!paginas[paginaActual].esIndice">
-    <figure class="media-container" (click)="abrirFullscreen(paginas[paginaActual].imagen)">
-        <div class="loader" *ngIf="!paginas[paginaActual].imagenCargada">
+        <figure class="media-container" (click)="abrirFullscreen(paginas[paginaActual].imagen)">
+          <div class="loader" *ngIf="!paginas[paginaActual].imagenCargada">
             <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
             <p>Cargando imagen...</p>
-        </div>
-        
-        <img 
-            [src]="paginas[paginaActual].imagen" 
-            [alt]="paginas[paginaActual].titulo" 
-            [class.imagen-cargada]="paginas[paginaActual].imagenCargada"
-            loading="lazy"
-            (load)="onImageLoad(paginaActual)"
-            (error)="onImageError(paginaActual)"
-        />
-        
-        <div class="overlay-fullscreen" *ngIf="paginas[paginaActual].imagenCargada">
-        </div>
-    </figure>
+          </div>
 
-    <div class="descripcion">
-        <h2>{{ paginas[paginaActual].titulo }}</h2>
-        <p class="descripcion-texto" *ngIf="paginas[paginaActual].descripcion">
+          <img [src]="paginas[paginaActual].imagen" [alt]="paginas[paginaActual].titulo"
+            [class.imagen-cargada]="paginas[paginaActual].imagenCargada" loading="lazy"
+            (load)="onImageLoad(paginaActual)" (error)="onImageError(paginaActual)" />
+
+          <div class="overlay-fullscreen" *ngIf="paginas[paginaActual].imagenCargada">
+          </div>
+        </figure>
+
+        <div class="descripcion">
+          <h2>{{ paginas[paginaActual].titulo }}</h2>
+          <p class="descripcion-texto" *ngIf="paginas[paginaActual].descripcion">
             {{ paginas[paginaActual].descripcion }}
-        </p>
-        <p class="fecha" *ngIf="paginas[paginaActual].fecha">
+          </p>
+          <p class="fecha" *ngIf="paginas[paginaActual].fecha">
             {{ paginas[paginaActual].fecha | date:'longDate' }}
-        </p>
-        
-        <div class="metadatos" *ngIf="paginas[paginaActual].fechaOriginal">
+          </p>
+
+          <div class="metadatos" *ngIf="paginas[paginaActual].fechaOriginal">
             <small>Fecha original: {{ paginas[paginaActual].fechaOriginal | date:'short' }}</small>
+          </div>
         </div>
-    </div>
-</ng-container>
+      </ng-container>
     </article>
 
     <!-- ===== SUBBLOQUE 2.3: CONTROLES DE NAVEGACIÓN ===== -->
-    <nav 
-      class="controles-pagina" 
-      role="navigation" 
-      aria-label="Navegación de páginas"
-    >
+    <nav class="controles-pagina" role="navigation" aria-label="Navegación de páginas">
       <!-- Botón página anterior -->
-      <button 
-        class="btn-pagina" 
-        (click)="cambiarPagina(-1)" 
-        [disabled]="!hayPaginaAnterior"
+      <button class="btn-pagina" (click)="cambiarPagina(-1)" [disabled]="!hayPaginaAnterior"
         [attr.aria-label]="hayPaginaAnterior ? 'Ir a página anterior' : 'No hay página anterior'"
-        title="Página anterior"
-      >
+        title="Página anterior">
         <i class="fas fa-chevron-left" aria-hidden="true"></i>
         <span class="sr-only">Anterior</span>
       </button>
 
       <!-- Información de paginación -->
-      <div class="info-paginacion">
-        <span class="contador-pagina" aria-live="polite">
-          {{ numeroPaginaDisplay }}
-        </span>
+      <div *ngIf="paginas[paginaActual]">
         <span class="tipo-pagina">
           {{ paginas[paginaActual].esIndice ? 'Índice' : 'Imagen' }}
         </span>
       </div>
+      iv>
 
       <!-- Botón página siguiente -->
-      <button 
-        class="btn-pagina" 
-        (click)="cambiarPagina(1)" 
-        [disabled]="!hayPaginaSiguiente"
+      <button class="btn-pagina" (click)="cambiarPagina(1)" [disabled]="!hayPaginaSiguiente"
         [attr.aria-label]="hayPaginaSiguiente ? 'Ir a página siguiente' : 'No hay página siguiente'"
-        title="Página siguiente"
-      >
+        title="Página siguiente">
         <i class="fas fa-chevron-right" aria-hidden="true"></i>
         <span class="sr-only">Siguiente</span>
       </button>
@@ -176,16 +151,10 @@
     <!-- ===== SUBBLOQUE 2.4: NAVEGACIÓN RÁPIDA ===== -->
     <div class="navegacion-rapida" *ngIf="paginas.length > 1">
       <h3 class="sr-only">Navegación rápida</h3>
-      <button 
-        *ngFor="let pagina of paginas; let i = index" 
-        class="indicador-pagina"
-        [class.activo]="i === paginaActual"
-        [class.indice]="pagina.esIndice"
-        [class.imagen-cargada]="pagina.imagenCargada"
-        (click)="irAPagina(i)"
+      <button *ngFor="let pagina of paginas; let i = index" class="indicador-pagina" [class.activo]="i === paginaActual"
+        [class.indice]="pagina.esIndice" [class.imagen-cargada]="pagina.imagenCargada" (click)="irAPagina(i)"
         [attr.aria-label]="pagina.esIndice ? 'Ir al índice' : 'Ir a imagen ' + i"
-        [title]="pagina.esIndice ? 'Índice' : pagina.titulo"
-      >
+        [title]="pagina.esIndice ? 'Índice' : pagina.titulo">
         <i *ngIf="pagina.esIndice" class="fas fa-list" aria-hidden="true"></i>
         <i *ngIf="!pagina.esIndice" class="fas fa-image" aria-hidden="true"></i>
       </button>
@@ -195,7 +164,7 @@
   <!-- ========================================= -->
   <!-- BLOQUE 3: ESTADOS DE CARGA Y ERROR      -->
   <!-- ========================================= -->
-  
+
   <!-- ===== ESTADO DE CARGA ===== -->
   <div class="estado-carga" *ngIf="isLoading" role="status" aria-label="Cargando álbum">
     <div class="spinner">
@@ -234,29 +203,15 @@
   <!-- BLOQUE 4: MODO PANTALLA COMPLETA        -->
   <!-- ========================================= -->
   <!-- Overlay que cubre toda la pantalla -->
-  <div 
-    class="modo-pantalla-completa" 
-    [class.activo]="mostrarFullscreen" 
-    (click)="cerrarFullscreen()"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Imagen en pantalla completa"
-  >
+  <div class="modo-pantalla-completa" [class.activo]="mostrarFullscreen" (click)="cerrarFullscreen()" role="dialog"
+    aria-modal="true" aria-label="Imagen en pantalla completa">
     <!-- ===== IMAGEN EN PANTALLA COMPLETA ===== -->
-    <img 
-      [src]="imagenFullscreen" 
-      class="imagen-fullscreen" 
-      (click)="$event.stopPropagation()"
-      [alt]="paginaActualData?.titulo || 'Imagen en pantalla completa'"
-    />
-    
+    <img [src]="imagenFullscreen" class="imagen-fullscreen" (click)="$event.stopPropagation()"
+      [alt]="paginaActualData?.titulo || 'Imagen en pantalla completa'" />
+
     <!-- ===== BOTÓN CERRAR PANTALLA COMPLETA ===== -->
-    <button 
-      class="btn-cerrar-fullscreen" 
-      (click)="cerrarFullscreen(); $event.stopPropagation()"
-      aria-label="Cerrar pantalla completa"
-      title="Cerrar (Esc)"
-    >
+    <button class="btn-cerrar-fullscreen" (click)="cerrarFullscreen(); $event.stopPropagation()"
+      aria-label="Cerrar pantalla completa" title="Cerrar (Esc)">
       <i class="fas fa-times" aria-hidden="true"></i>
     </button>
 
@@ -268,23 +223,15 @@
 
     <!-- ===== CONTROLES DE NAVEGACIÓN EN PANTALLA COMPLETA ===== -->
     <div class="controles-fullscreen">
-      <button 
-        class="btn-nav-fullscreen btn-anterior" 
-        *ngIf="hayPaginaAnterior"
-        (click)="navegarEnFullscreen(-1); $event.stopPropagation()"
-        aria-label="Imagen anterior"
-        title="Imagen anterior"
-      >
+      <button class="btn-nav-fullscreen btn-anterior" *ngIf="hayPaginaAnterior"
+        (click)="navegarEnFullscreen(-1); $event.stopPropagation()" aria-label="Imagen anterior"
+        title="Imagen anterior">
         <i class="fas fa-chevron-left" aria-hidden="true"></i>
       </button>
 
-      <button 
-        class="btn-nav-fullscreen btn-siguiente" 
-        *ngIf="hayPaginaSiguiente"
-        (click)="navegarEnFullscreen(1); $event.stopPropagation()"
-        aria-label="Imagen siguiente"
-        title="Imagen siguiente"
-      >
+      <button class="btn-nav-fullscreen btn-siguiente" *ngIf="hayPaginaSiguiente"
+        (click)="navegarEnFullscreen(1); $event.stopPropagation()" aria-label="Imagen siguiente"
+        title="Imagen siguiente">
         <i class="fas fa-chevron-right" aria-hidden="true"></i>
       </button>
     </div>

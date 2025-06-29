@@ -1,6 +1,9 @@
 import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ArchivoService } from '../../../../servicios/archivo.service';
+import { ViajesPrevistosService } from '../../../../servicios/viajes-previstos.service'; // Para nombres de viajes
+import { ItinerarioService } from '../../../../servicios/itinerario.service'; // Para nombres de itinerarios
+import { ActividadesItinerariosService } from '../../../../servicios/actividades-itinerarios.service'; // Para nombres de actividades
 import { CommonModule } from '@angular/common';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { environment } from '../../../../../environments/environment';
@@ -22,13 +25,21 @@ interface ContextoViaje {
   viajeId: number;            // El viaje siempre debe estar presente
   itinerarioId?: number;      // El itinerario puede estar presente, pero es opcional
   actividadId?: number;       // La actividad también es opcional
+  
 }
 
-interface DatosViaje {
+/*interface DatosViaje {
   viajeId: number;
   itinerarioId?: number;
   actividadId?: number;
+}*/
+
+interface InfoViaje {
+  nombre: string;
+  fechaInicio?: string;
+  fechaFin?: string;
 }
+
 
 
 @Component({
@@ -42,7 +53,8 @@ export class AlbumLibroComponent implements OnInit, OnDestroy {
   paginas: PaginaAlbum[] = [];
   paginaActual = 0;
   estado: 'portada' | 'abierto' | 'contraportada' = 'portada';
-  datosViaje: DatosViaje | null = null;
+  //datosViaje: DatosViaje | null = null;
+  infoViaje: InfoViaje | null = null;
   contextoViaje: ContextoViaje | null = null;
   imagenFullscreen = '';
   mostrarFullscreen = false;
@@ -54,14 +66,18 @@ export class AlbumLibroComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   constructor(
-    private router: Router,
-    private route: ActivatedRoute,
-    private archivoService: ArchivoService
-  ) {}
+  private router: Router,
+  private route: ActivatedRoute,
+  private archivoService: ArchivoService,
+  private viajesPrevistosService: ViajesPrevistosService,
+  private itinerarioService: ItinerarioService,
+  private actividadesItinerariosService: ActividadesItinerariosService
+) {}
 
-  ngOnInit(): void {
-    this.inicializarComponente();
-  }
+  async ngOnInit(): Promise<void> {
+  await this.inicializarComponente();
+}
+
 
   ngOnDestroy(): void {
     this.destroy$.next();
@@ -82,7 +98,7 @@ export class AlbumLibroComponent implements OnInit, OnDestroy {
     }
   }
 
-  private inicializarComponente(): void {
+  private async inicializarComponente(): Promise<void> {
     const params = this.route.snapshot.paramMap;
     const viajeId = Number(params.get('viajeId'));
     const itinerarioId = params.get('itinerarioId') ? Number(params.get('itinerarioId')) : undefined;
@@ -95,10 +111,34 @@ export class AlbumLibroComponent implements OnInit, OnDestroy {
 
     // Configurar contexto según los parámetros disponibles
     this.contextoViaje = { viajeId, itinerarioId, actividadId };
-    this.datosViaje = { viajeId, itinerarioId, actividadId };
-    
+    //this.datosViaje = { viajeId, itinerarioId, actividadId };
+    this.cargarInfoViaje(viajeId);
     this.cargarDatosAlbum();
   }
+
+private async cargarInfoViaje(viajeId: number): Promise<void> {
+  try {
+    const viaje = await firstValueFrom(
+      this.viajesPrevistosService.obtenerViaje(viajeId).pipe(takeUntil(this.destroy$))
+    );
+
+    this.infoViaje = {
+      nombre: viaje.nombre || `Viaje #${viajeId}`,
+      fechaInicio: viaje.fechaInicio || '',
+      fechaFin: viaje.fechaFin || ''
+    };
+    console.log(this.infoViaje);
+
+  } catch (error) {
+    console.error('❌ Error al cargar información del viaje:', error);
+    this.infoViaje = {
+      nombre: `Viaje #${viajeId}`,
+      fechaInicio: '',
+      fechaFin: ''
+    };
+  }
+}
+  
 
   private validarParametros(viajeId: number, itinerarioId?: number, actividadId?: number): boolean {
     // El viaje es obligatorio
