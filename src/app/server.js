@@ -809,44 +809,118 @@ app.get('/archivos/viaje/:viajeId', (req, res) => {
 app.post('/archivos/buscar-coincidencias', upload.single('archivo'), async (req, res) => {
   try {
     const { actividadId } = req.body;
-    const metadata = await getFileMetadata(req.file.path, req.file.mimetype);
 
+    // ✅ NUEVO: función para parsear fecha desde nombre de archivo
+    function parseDateFromFilename(filename) {
+      // Intentamos detectar patrón tipo VID20250504130146.mp4 => 2025-05-04 13:01:46
+      const match = filename.match(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+      if (match) {
+        const [_, y, m, d, h, min, s] = match;
+        return new Date(`${y}-${m}-${d}T${h}:${min}:${s}.000Z`).toISOString();
+      }
+      return null;
+    }
+
+    console.log('\n🔍 =============== BUSCAR COINCIDENCIAS ===============');
+
+    // ✅ Obtenemos metadatos desde archivo
+    let metadata = await getFileMetadata(req.file.path, req.file.mimetype);
+    console.log('📅 Metadatos iniciales:', metadata);
+
+    // ✅ Si no hay fecha, intentamos extraer del nombre del archivo
+    if (!metadata.fecha) {
+      const fechaFromName = parseDateFromFilename(req.file.originalname);
+      metadata.fecha = fechaFromName || new Date().toISOString();
+      metadata.hora = fechaFromName ? fechaFromName.split('T')[1].split('.')[0] : new Date().toISOString().split('T')[1].split('.')[0];
+      console.log('⚠️ Fecha no encontrada en metadatos, usando nombre de archivo:', metadata);
+    }
+
+    console.log('📌 actividadId actual:', actividadId);
+
+    // ✅ Buscar actividades del MISMO DÍA y rango horario
     const query = `
-      SELECT a.id, a.nombre, a.horaInicio, a.horaFin, i.fechaInicio, i.fechaFin, a.viajePrevistoId, a.itinerarioId
+      SELECT 
+        a.id AS actividadId,
+        a.nombre AS actividadNombre,
+        a.descripcion AS actividadDescripcion,
+        a.horaInicio,
+        a.horaFin,
+        i.id AS itinerarioId,
+        i.fechaInicio,
+        i.fechaFin,
+        v.id AS viajeId,
+        v.nombre AS nombreViaje,
+        v.destino
       FROM actividades a
       JOIN ItinerarioGeneral i ON a.itinerarioId = i.id
-      WHERE DATE(?) BETWEEN DATE(i.fechaInicio) AND DATE(i.fechaFin)
-        AND TIME(?) BETWEEN TIME(a.horaInicio) AND TIME(a.horaFin)
+      JOIN viajes v ON a.viajePrevistoId = v.id
+      WHERE 
+        DATE(?) BETWEEN DATE(i.fechaInicio) AND DATE(i.fechaFin)
+        AND TIME(a.horaInicio) <= TIME(?)
+        AND TIME(a.horaFin) >= TIME(?)
+      ORDER BY a.horaInicio ASC
     `;
 
     const actividades = await new Promise((resolve, reject) => {
-      db.all(query, [metadata.fecha, metadata.hora], (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
+      db.all(query, [metadata.fecha, metadata.hora, metadata.hora], (err, rows) => {
+        if (err) return reject(err);
+        console.log(`✅ Encontradas ${rows.length} actividades coincidentes:`);
+        rows.forEach(r => console.log(`  - ${r.actividadNombre} (${r.horaInicio}-${r.horaFin})`));
+        resolve(rows);
       });
     });
 
-    // Obtener la actividad actual si fue pasada
-    async function getActividad(id) {
-      return new Promise(resolve => {
-        db.get('SELECT id, nombre, horaInicio, horaFin FROM actividades WHERE id = ?', [id], (err, row) => {
-          resolve(row || null);
+    // ✅ Obtener la actividad actual solo por ID
+    let actividadActual = null;
+    if (actividadId) {
+      actividadActual = await new Promise(resolve => {
+        const queryActual = `
+          SELECT 
+            a.id AS actividadId, 
+            a.nombre AS actividadNombre, 
+            a.horaInicio, 
+            a.horaFin,
+            i.fechaInicio,
+            i.fechaFin
+          FROM actividades a
+          JOIN ItinerarioGeneral i ON a.itinerarioId = i.id
+          WHERE a.id = ?
+        `;
+        db.get(queryActual, [actividadId], (err, row) => {
+          if (err) {
+            console.error('❌ Error obteniendo actividad actual:', err);
+            return resolve(null);
+          }
+          // Solo devolver actividadActual si la fecha del archivo está dentro del itinerario
+          if (row && metadata.fecha >= row.fechaInicio && metadata.fecha <= row.fechaFin) {
+            resolve(row);
+          } else {
+            resolve(null);
+          }
         });
       });
     }
 
-    const actividadActual = actividadId ? await getActividad(actividadId) : null;
+    if (actividadActual) {
+      console.log('📌 Actividad actual válida:', actividadActual.actividadNombre, `(${actividadActual.fechaInicio} → ${actividadActual.fechaFin})`);
+    } else {
+      console.log('❌ Actividad actual no coincide con fecha del archivo');
+    }
 
     res.json({
       metadata,
       actividadesCoincidentes: actividades || [],
       actividadActual
     });
+
   } catch (error) {
     console.error('[buscar-coincidencias] Error:', error);
-    res.status(500).json({ error: "Error buscando coincidencias" });
+    res.status(500).json({ error: "Error buscando coincidencias: " + error.message });
   }
 });
+
+
+
 
 
 // 2️⃣ GET archivo individual por ID
@@ -858,18 +932,36 @@ app.get('/archivos/:id', (req, res) => {
   });
 });
 
-// 3️⃣ POST nuevo archivo (metadatos)
+// ✅ TAMBIÉN CORRIGE EL ENDPOINT INDIVIDUAL DE ARCHIVOS
 app.post('/archivos', (req, res) => {
-  const { actividadId, tipo, nombreArchivo, rutaArchivo, descripcion, horaCaptura, version, geolocalizacion, metadatos } = req.body;
+  // ✅ AÑADIR fechaCreacion aquí también
+  const { 
+    actividadId, tipo, nombreArchivo, rutaArchivo, descripcion, 
+    horaCaptura, version, geolocalizacion, metadatos, fechaCreacion 
+  } = req.body;
+
+  console.log('📝 Creando archivo individual con fechaCreacion:', fechaCreacion);
+
+  // ✅ DETERMINAR FECHA DE CREACIÓN
+  const fechaFinal = fechaCreacion ? new Date(fechaCreacion).toISOString() : new Date().toISOString();
 
   db.run(
     `INSERT INTO archivos 
-    (actividadId, tipo, nombreArchivo, rutaArchivo, descripcion, horaCaptura, version, geolocalizacion, metadatos)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [actividadId, tipo, nombreArchivo, rutaArchivo, descripcion || null, horaCaptura || null, version || 1, geolocalizacion || null, metadatos || null],
+    (actividadId, tipo, nombreArchivo, rutaArchivo, descripcion, horaCaptura, version, geolocalizacion, metadatos, fechaCreacion)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      actividadId, tipo, nombreArchivo, rutaArchivo, 
+      descripcion || null, horaCaptura || null, version || 1, 
+      geolocalizacion || null, metadatos || null, fechaFinal
+    ],
     function (err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.status(201).json({ id: this.lastID });
+      if (err) {
+        console.error('❌ Error creando archivo:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      
+      console.log('✅ Archivo creado con ID:', this.lastID, 'y fechaCreacion:', fechaFinal);
+      res.status(201).json({ id: this.lastID, fechaCreacion: fechaFinal });
     }
   );
 });
@@ -932,73 +1024,178 @@ app.put('/archivos/:id', (req, res) => {
   });
 });
 
-// 6️⃣ POST subir múltiples archivos (con procesamiento EXIF)
+// 6️⃣ POST subir múltiples archivos (CORREGIDO CON GPS)
 app.post('/archivos/subir', upload.array('archivos'), async (req, res) => {
-  const { actividadId, tipo, descripcion, horaCaptura, geolocalizacion } = req.body;
+  const { actividadId, tipo, descripcion, horaCaptura, geolocalizacion, fechaCreacion, actividadesCoincidentes, actividadSeleccionada } = req.body;
   const archivos = req.files;
+
+  console.log('\n🚀 =============== NUEVA SUBIDA DE ARCHIVOS ===============');
+  console.log('📦 Datos recibidos del frontend:');
+  console.log('  - actividadId:', actividadId);
+  console.log('  - actividadSeleccionada:', actividadSeleccionada);
+  console.log('  - tipo:', tipo);
+  console.log('  - descripcion:', descripcion);
+  console.log('  - horaCaptura:', horaCaptura);
+  console.log('  - fechaCreacion:', fechaCreacion);
+  console.log('  - geolocalizacion:', geolocalizacion);
+  console.log('  - archivos:', archivos?.length || 0);
 
   if (!archivos?.length) {
     return res.status(400).json({ error: 'No se subieron archivos' });
   }
 
+  function extraerCoordendasGPS(exifTags) {
+    try {
+      const { GPSLatitude, GPSLongitude, GPSLatitudeRef, GPSLongitudeRef, GPSAltitude } = exifTags;
+      if (!GPSLatitude || !GPSLongitude) return null;
+
+      let lat = convertirADecimal(GPSLatitude);
+      let lng = convertirADecimal(GPSLongitude);
+
+      if (GPSLatitudeRef?.toLowerCase() === 's') lat = -lat;
+      if (GPSLongitudeRef?.toLowerCase() === 'w') lng = -lng;
+
+      const coordenadas = { latitud: lat, longitud: lng, altitud: GPSAltitude || null };
+      console.log('🌍 Coordenadas GPS extraídas:', coordenadas);
+      return JSON.stringify(coordenadas);
+    } catch (error) {
+      console.error('❌ Error extrayendo GPS:', error);
+      return null;
+    }
+  }
+
+  function convertirADecimal(coordenada) {
+    if (typeof coordenada === 'number') return coordenada;
+    if (Array.isArray(coordenada) && coordenada.length >= 2) {
+      const grados = coordenada[0] || 0;
+      const minutos = coordenada[1] || 0;
+      const segundos = coordenada[2] || 0;
+      return grados + minutos / 60 + segundos / 3600;
+    }
+    return coordenada;
+  }
+
   const resultados = [];
-  
+
   for (const archivo of archivos) {
     try {
-      // Procesamiento EXIF (ejemplo básico)
+      console.log(`\n📁 Procesando archivo: ${archivo.originalname}`);
+
       let metadatos = {};
       let horaExif = null;
-      
+      let geolocalizacionExif = null;
+
       if (['image/jpeg', 'image/tiff'].includes(archivo.mimetype)) {
         const buffer = fs.readFileSync(archivo.path);
         const parser = ExifParser.create(buffer);
         const exifData = parser.parse();
-        
-if (exifData.tags?.DateTimeOriginal) {
-  const dt = exifData.tags.DateTimeOriginal;
-  if (typeof dt === 'number') {
-    // Si es un timestamp (segundos desde 1970)
-    horaExif = new Date(dt * 1000).toISOString();
-  } else if (typeof dt === 'string') {
-    // Si es string tipo "YYYY:MM:DD HH:MM:SS"
-    const dateStr = dt.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3').replace(' ', 'T');
-    horaExif = new Date(dateStr).toISOString();
-  } else if (dt instanceof Date) {
-    horaExif = dt.toISOString();
-  } else {
-    // Si no se puede convertir, ignora
-    horaExif = null;
-  }
-}
+
+        if (exifData.tags?.DateTimeOriginal) {
+          const dt = exifData.tags.DateTimeOriginal;
+          if (typeof dt === 'number') horaExif = new Date(dt * 1000).toISOString();
+          else if (typeof dt === 'string') {
+            const dateStr = dt.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3').replace(' ', 'T');
+            horaExif = new Date(dateStr).toISOString();
+          } else if (dt instanceof Date) horaExif = dt.toISOString();
+          else horaExif = null;
+        }
+
         metadatos = exifData.tags || {};
+        geolocalizacionExif = extraerCoordendasGPS(exifData.tags || {});
+        if (geolocalizacionExif) console.log('📍 GPS encontrado en EXIF del archivo:', archivo.originalname);
       }
 
-      // Insertar en base de datos
-const stmt = await db.prepare(
-  `INSERT INTO archivos 
-  (actividadId, tipo, nombreArchivo, rutaArchivo, descripcion, horaCaptura, geolocalizacion, metadatos) 
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-);
+      let fechaCreacionFinal;
+      if (fechaCreacion) {
+        fechaCreacionFinal = new Date(fechaCreacion).toISOString();
+        console.log('✅ Usando fechaCreacion del frontend:', fechaCreacionFinal);
+      } else if (horaExif) {
+        fechaCreacionFinal = horaExif;
+        console.log('📷 Usando fecha EXIF como fallback:', fechaCreacionFinal);
+      } else {
+        fechaCreacionFinal = new Date().toISOString();
+        console.log('🕐 Usando fecha actual como último recurso:', fechaCreacionFinal);
+      }
 
-await stmt.run(
-  actividadId,
-  tipo || archivo.mimetype.split('/')[0],
-  archivo.originalname,
-  archivo.path,
-  descripcion || '',
-  horaCaptura || horaExif || new Date().toISOString(),
-  geolocalizacion || '',
-  JSON.stringify(metadatos)
-);
-      
+      let geolocalizacionFinal;
+      if (geolocalizacionExif) {
+        geolocalizacionFinal = geolocalizacionExif;
+        console.log('🌍 Usando geolocalización de EXIF');
+      } else if (geolocalizacion) {
+        geolocalizacionFinal = geolocalizacion;
+        console.log('📱 Usando geolocalización del frontend');
+      } else {
+        geolocalizacionFinal = null;
+        console.log('❌ No hay datos de geolocalización disponibles');
+      }
+
+      // ------------------ ASIGNACIÓN DE ACTIVIDAD ------------------
+      let actividadFinal = null;
+
+      if (actividadId) {
+        actividadFinal = actividadId;
+        console.log(`📌 Asignando archivo a actividadId del frontend: ${actividadFinal}`);
+        console.log('📝 Usuario NO seleccionó actividad manualmente, se usa actividadId por defecto');
+      } else if (actividadSeleccionada) {
+        actividadFinal = actividadSeleccionada;
+        console.log(`📌 Asignando archivo a actividadSeleccionada enviada por frontend: ${actividadFinal}`);
+        console.log('📝 Usuario SÍ seleccionó actividad manualmente');
+      } else {
+        if (!actividadesCoincidentes?.length) {
+          console.log(`❌ No hay coincidencias para asignar automáticamente`);
+          resultados.push({
+            nombre: archivo.originalname,
+            estado: 'no-actividad',
+            mensaje: 'No hay actividades coincidentes'
+          });
+          continue;
+        } else if (actividadesCoincidentes.length === 1) {
+          actividadFinal = actividadesCoincidentes[0].actividadId;
+          console.log(`📌 Asignando archivo automáticamente a la única actividad encontrada: ${actividadFinal}`);
+          console.log('📝 Usuario NO seleccionó actividad manualmente, se asignó automáticamente');
+        } else {
+          console.log(`⚠️ Varias coincidencias encontradas, selección necesaria`);
+          resultados.push({
+            nombre: archivo.originalname,
+            estado: 'seleccion-necesaria',
+            actividadesCoincidentes
+          });
+          continue;
+        }
+      }
+
+      // ------------------ GUARDAR ARCHIVO ------------------
+      const stmt = await db.prepare(
+        `INSERT INTO archivos 
+        (actividadId, tipo, nombreArchivo, rutaArchivo, descripcion, horaCaptura, geolocalizacion, metadatos, fechaCreacion) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      );
+
+      await stmt.run(
+        actividadFinal,
+        tipo || archivo.mimetype.split('/')[0],
+        archivo.originalname,
+        archivo.path,
+        descripcion || '',
+        horaCaptura || horaExif || new Date().toISOString(),
+        geolocalizacionFinal,
+        JSON.stringify(metadatos),
+        fechaCreacionFinal
+      );
+
+      console.log(`✅ Archivo guardado con actividadId: ${actividadFinal}`);
       resultados.push({
         id: stmt.lastID,
         nombre: archivo.originalname,
         estado: 'subido',
+        actividadId: actividadFinal,
+        fechaCreacion: fechaCreacionFinal,
+        geolocalizacion: geolocalizacionFinal,
         metadatos: Object.keys(metadatos).length > 0 ? metadatos : null
       });
 
     } catch (error) {
+      console.error(`❌ Error procesando ${archivo?.originalname}:`, error);
       resultados.push({
         nombre: archivo?.originalname || 'desconocido',
         estado: 'error',
@@ -1007,8 +1204,16 @@ await stmt.run(
     }
   }
 
+  console.log('\n🏁 Subida completada. Resultados:', resultados.length);
+  console.log('🔍 Detalle de resultados:', resultados);
   res.status(201).json(resultados);
 });
+
+
+
+
+
+
 
 // 7️⃣ DELETE archivo
 app.delete('/archivos/:id', (req, res) => {

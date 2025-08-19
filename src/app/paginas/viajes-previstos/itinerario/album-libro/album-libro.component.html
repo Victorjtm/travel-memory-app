@@ -15,6 +15,7 @@
 
     <!-- Contenido de la portada -->
     <div class="titulo-portada">
+      
       <!-- Nombre real del viaje (si está disponible) -->
       <ng-container *ngIf="infoViaje as info">
         <h1>{{ info.nombre || getTituloContextual() }}</h1>

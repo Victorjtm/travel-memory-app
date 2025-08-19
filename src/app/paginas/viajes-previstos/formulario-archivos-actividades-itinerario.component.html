@@ -69,6 +69,50 @@
           <h4>Archivo nuevo seleccionado para reemplazar:</h4>
           <p>{{ archivoNuevoSeleccionado.name }} ({{ archivoNuevoSeleccionado.size | filesize }})</p>
         </div>
+
+        <!-- ✅ NUEVO BLOQUE - Añadir ANTES del botón de subir -->
+<div *ngIf="subiendoArchivos" class="progress-container">
+  <div class="progress-header">
+    <mat-spinner diameter="24"></mat-spinner>
+    <h3>Subiendo archivos...</h3>
+  </div>
+  
+  <div class="progress-info">
+    <p>Archivo {{archivoActualIndex + 1}} de {{totalArchivos}}</p>
+    <p class="current-file">{{nombreArchivoActual}}</p>
+  </div>
+  
+  <div class="progress-bars">
+    <!-- Barra de progreso global -->
+    <div class="progress-label">
+      <span>Progreso total</span>
+      <span class="percentage">{{progresoGlobal}}%</span>
+    </div>
+    <mat-progress-bar 
+      mode="determinate" 
+      [value]="progresoGlobal"
+      color="primary">
+    </mat-progress-bar>
+    
+    <!-- Barra del archivo actual -->
+    <div class="progress-label">
+      <span>Archivo actual</span>
+      <span class="percentage">{{porcentajeArchivoActual}}%</span>
+    </div>
+    <mat-progress-bar 
+      mode="determinate" 
+      [value]="porcentajeArchivoActual"
+      color="accent">
+    </mat-progress-bar>
+  </div>
+<!-- ✅ AÑADIR BOTÓN DE CANCELAR (aquí es donde va) -->
+  <div class="progress-actions">
+    <button mat-button color="warn" (click)="cancelarSubida()">
+      <mat-icon>cancel</mat-icon>
+      Cancelar
+    </button>
+  </div>  
+</div>
   
         <!-- Botón de submit -->
         <button type="submit" 

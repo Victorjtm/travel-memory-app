@@ -77,4 +77,42 @@ export class ArchivoService {
       formData
     );
   }
+
+  // ✅ NUEVO MÉTODO - Añadir al final de la clase ArchivoService
+  subirArchivosConProgreso(formData: FormData, onProgress?: (porcentaje: number) => void): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      
+      // 🎯 Evento de progreso - aquí capturamos el porcentaje
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable && onProgress) {
+          const porcentaje = Math.round((event.loaded / event.total) * 100);
+          onProgress(porcentaje); // 👈 Aquí enviamos el progreso al component
+        }
+      });
+      
+      // 🎯 Cuando termina exitosamente
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            resolve(response);
+          } catch (e) {
+            resolve(xhr.responseText);
+          }
+        } else {
+          reject(new Error(`Error HTTP: ${xhr.status}`));
+        }
+      });
+      
+      // 🎯 Si hay error
+      xhr.addEventListener('error', () => {
+        reject(new Error('Error de red'));
+      });
+      
+      // 🎯 Configurar y enviar - USAR TU ENVIRONMENT
+      xhr.open('POST', `${environment.apiUrl}/archivos/subir`);
+      xhr.send(formData);
+    });
+  }
 }

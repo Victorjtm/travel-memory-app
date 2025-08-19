@@ -5,6 +5,13 @@ import {
   isDataSource
 } from "./chunk-JJM6S4OE.js";
 import {
+  RtlScrollAxisType,
+  _isTestEnvironment,
+  coerceCssPixelValue,
+  getRtlScrollAxisType,
+  supportsScrollBehavior
+} from "./chunk-LCL76FDH.js";
+import {
   A11yModule,
   ESCAPE,
   FocusMonitor,
@@ -12,31 +19,26 @@ import {
   InteractivityChecker,
   MatCommonModule,
   Platform,
-  RtlScrollAxisType,
   _CdkPrivateStyleLoader,
   _IdGenerator,
   _bindEventWithOptions,
   _getEventTarget,
   _getFocusedElementPierceShadowDom,
-  _isTestEnvironment,
   coerceArray,
-  coerceCssPixelValue,
   coerceElement,
   coerceNumberProperty,
-  getRtlScrollAxisType,
-  hasModifierKey,
-  supportsScrollBehavior
-} from "./chunk-73XO7R5G.js";
+  hasModifierKey
+} from "./chunk-EGDX3NSR.js";
 import {
   BidiModule,
   Directionality
-} from "./chunk-43XTOPV2.js";
+} from "./chunk-H3T65ING.js";
 import {
   Location
-} from "./chunk-C4YZQ674.js";
+} from "./chunk-FJ2LSRVL.js";
 import {
   DOCUMENT
-} from "./chunk-CF3R7NKO.js";
+} from "./chunk-3B7WPXDT.js";
 import {
   ANIMATION_MODULE_TYPE,
   ApplicationRef,
