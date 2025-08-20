@@ -49,16 +49,25 @@ export class ArchivosComponent implements OnInit {
   }
 
   cargarArchivos(): void {
-    this.archivoService.getArchivosPorActividad(this.actividadId).subscribe({
-      next: archivos => {
-        this.archivos = archivos ?? [];
-      },
-      error: err => {
-        console.error('Error cargando archivos:', err);
-        this.archivos = [];
-      }
-    });
-  }
+  this.archivoService.getArchivosPorActividad(this.actividadId).subscribe({
+    next: archivos => {
+      this.archivos = (archivos ?? []).sort((a, b) => {
+        const toMinutes = (hora?: string): number => {
+          if (!hora) return Number.MAX_SAFE_INTEGER; // los nulos van al final
+          const [h, m] = hora.split(':').map(Number);
+          return h * 60 + m;
+        };
+
+        return toMinutes(a.horaCaptura) - toMinutes(b.horaCaptura); // menor a mayor
+      });
+    },
+    error: err => {
+      console.error('Error cargando archivos:', err);
+      this.archivos = [];
+    }
+  });
+}
+
 
   abrirModal(archivo: Archivo): void {
     this.archivoSeleccionado = archivo;

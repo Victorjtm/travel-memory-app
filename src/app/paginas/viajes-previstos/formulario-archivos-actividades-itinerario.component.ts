@@ -15,6 +15,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon'; // para iconos
 import { MatProgressBarModule } from '@angular/material/progress-bar'; 
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+import { MatCardModule } from '@angular/material/card';
+import { MatListModule } from '@angular/material/list';
+import { MatExpansionModule } from '@angular/material/expansion';
 
 // ✅ Corrección principal: si vas a usar [(ngModel)] en mat-radio-group, FormsModule debe estar importado
 // y NO usar ngValue en mat-radio-button. Solo usar [value] como en el código reescrito previamente.
@@ -34,9 +40,15 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
       MatDialogModule,
       MatRadioModule,
       MatButtonModule,
-      MatProgressBarModule,        // ✅ NUEVO
+      MatProgressBarModule,        
       MatProgressSpinnerModule,
-      MatIconModule     // ✅ NUEVO
+      MatIconModule,
+      MatInputModule,
+      MatFormFieldModule, 
+      MatSelectModule,
+      MatCardModule,
+      MatListModule,
+      MatExpansionModule
     ],
     templateUrl: './formulario-archivos-actividades-itinerario.component.html',
     styleUrls: ['./formulario-archivos-actividades-itinerario.component.scss']
@@ -46,8 +58,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
     archivosSeleccionados: File[] = [];
     modoEdicion: boolean = false;
     archivoEditandoId: number | null = null;
-
     archivoNuevoSeleccionado: File | null = null;
+    archivoOriginal: Archivo | null = null;
+    cargandoArchivo: boolean = false;
+    guardandoArchivo: boolean = false;
+    mostrarDebug: boolean = false;
 
     viajePrevistoId!: number;
     itinerarioId!: number;
@@ -103,19 +118,117 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
       });
     }
 
-    cargarArchivoParaEdicion(id: number): void {
-      this.archivoService.getArchivo(id).subscribe({
-        next: (archivo) => {
-          this.nuevoArchivo = {
-            tipo: archivo.tipo,
-            descripcion: archivo.descripcion || '',
-            horaCaptura: archivo.horaCaptura || this.getHoraActual(),
-            geolocalizacion: archivo.geolocalizacion || ''
-          };
-        },
-        error: (err) => console.error('[cargarArchivoParaEdicion] Error cargando archivo:', err)
-      });
+    // Método que se ejecuta cuando se envía el formulario
+onFormSubmit(): void {
+  console.log('[📝 FORM SUBMIT] Datos a enviar:', this.nuevoArchivo);
+  console.log('[📝 FORM SUBMIT] Modo edición:', this.modoEdicion);
+  console.log('[📝 FORM SUBMIT] ID archivo:', this.archivoEditandoId);
+  
+  if (this.modoEdicion) {
+    this.debugearDatosEdicion();
+  }
+  
+  this.subirArchivos();
+}
+
+// Método para debugear datos en edición
+private debugearDatosEdicion(): void {
+  console.log('=== DEBUG EDICIÓN ===');
+  console.log('Archivo Original:', this.archivoOriginal);
+  console.log('Datos nuevos:', this.nuevoArchivo);
+  console.log('Hay cambios:', this.hayCambios);
+  console.log('Archivo nuevo seleccionado:', this.archivoNuevoSeleccionado?.name);
+  console.log('ID de archivo editando:', this.archivoEditandoId);
+}
+
+// Métodos para detectar cambios específicos
+onTipoChange(event: any): void {
+  console.log('[🔄 TIPO CAMBIADO]', event.value);
+}
+
+onDescripcionChange(): void {
+  console.log('[🔄 DESCRIPCIÓN CAMBIADA]', this.nuevoArchivo.descripcion);
+}
+
+onHoraChange(): void {
+  console.log('[🔄 HORA CAMBIADA]', this.nuevoArchivo.horaCaptura);
+}
+
+onUbicacionChange(): void {
+  console.log('[🔄 UBICACIÓN CAMBIADA]', this.nuevoArchivo.geolocalizacion);
+}
+
+// Método para cancelar edición
+cancelarEdicion(): void {
+  if (this.hayCambios) {
+    if (confirm('¿Descartar los cambios realizados?')) {
+      this.volverAListaArchivos();
     }
+  } else {
+    this.volverAListaArchivos();
+  }
+}
+
+// ✅ NUEVO: Método para extraer mensaje de error legible
+private extraerMensajeError(error: any): string {
+  if (error?.error?.message) {
+    return error.error.message;
+  }
+  if (error?.message) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  return 'Error desconocido';
+}
+
+// Método para obtener información de debug
+getDebugInfo(): any {
+  return {
+    modoEdicion: this.modoEdicion,
+    archivoEditandoId: this.archivoEditandoId,
+    archivoOriginal: this.archivoOriginal,
+    nuevoArchivo: this.nuevoArchivo,
+    hayCambios: this.hayCambios,
+    archivoNuevoSeleccionado: this.archivoNuevoSeleccionado ? {
+      name: this.archivoNuevoSeleccionado.name,
+      size: this.archivoNuevoSeleccionado.size
+    } : null,
+    cargandoArchivo: this.cargandoArchivo,
+    guardandoArchivo: this.guardandoArchivo
+  };
+}
+
+
+  cargarArchivoParaEdicion(id: number): void {
+    this.cargandoArchivo = true;
+    
+    this.archivoService.getArchivo(id).subscribe({
+      next: (archivo) => {
+        console.log('[📄 CARGANDO ARCHIVO]', archivo);
+        
+        this.archivoOriginal = { ...archivo }; // Guardar copia original
+        
+        this.nuevoArchivo = {
+          tipo: archivo.tipo,
+          descripcion: archivo.descripcion || '',
+          horaCaptura: archivo.horaCaptura || this.getHoraActual(),
+          geolocalizacion: archivo.geolocalizacion || '',
+          fechaCreacion: archivo.fechaCreacion || new Date().toISOString()
+        };
+        
+        this.cargandoArchivo = false;
+        console.log('[✅ ARCHIVO CARGADO]', this.nuevoArchivo);
+      },
+      error: (err) => {
+        console.error('[❌ ERROR] Cargando archivo:', err);
+        this.cargandoArchivo = false;
+        alert('Error al cargar el archivo para edición');
+        this.volverAActividad();
+      }
+    });
+  }
 
     cargarArchivos(): void {
       this.archivoService.getArchivosPorActividad(this.actividadId)
@@ -141,32 +254,45 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
     }
   }
 
-    private parsearNombreArchivo(nombre: string): void {
-      const regex = /(IMG|VID|AUDIO)?(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/i;
-      const match = nombre.match(regex);
+  private parsearNombreArchivo(nombre: string): void {
+    const regex = /(IMG|VID|AUDIO)?(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/i;
+    const match = nombre.match(regex);
 
-      if (match) {
-        const tipoRaw = match[1]?.toLowerCase() || '';
-        const año = match[2];
-        const mes = match[3];
-        const dia = match[4];
-        const hora = match[5];
-        const minuto = match[6];
-        const segundo = match[7];
+    if (match) {
+      const tipoRaw = match[1]?.toLowerCase() || '';
+      const año = match[2];
+      const mes = match[3];
+      const dia = match[4];
+      const hora = match[5];
+      const minuto = match[6];
+      const segundo = match[7];
 
-        const horaCaptura = `${hora}:${minuto}`;
-        const fechaISO = `${año}-${mes}-${dia}T${hora}:${minuto}:${segundo}`;
+      const horaCaptura = `${hora}:${minuto}`;
+      const fechaISO = `${año}-${mes}-${dia}T${hora}:${minuto}:${segundo}`;
 
+      // Solo actualizar si no estamos en modo edición o si es la primera vez
+      if (!this.modoEdicion) {
         this.nuevoArchivo = {
           ...this.nuevoArchivo,
-          descripcion: `Archivo importado automáticamente: ${nombre}`,
+          descripcion: this.nuevoArchivo.descripcion || `Archivo importado automáticamente: ${nombre}`,
           horaCaptura: horaCaptura,
           fechaCreacion: new Date(fechaISO).toISOString(),
-          tipo: this.detectarTipoDesdeNombre(tipoRaw),
+          tipo: this.detectarTipoDesdeNombre(tipoRaw) || this.nuevoArchivo.tipo,
           geolocalizacion: this.nuevoArchivo.geolocalizacion || ''
         };
+      } else {
+        // En modo edición, solo sugerir cambios si el usuario no ha modificado manualmente
+        if (!this.hayCambiosManuales()) {
+          this.nuevoArchivo.horaCaptura = horaCaptura;
+          this.nuevoArchivo.fechaCreacion = new Date(fechaISO).toISOString();
+          const tipoDetectado = this.detectarTipoDesdeNombre(tipoRaw);
+          if (tipoDetectado) {
+            this.nuevoArchivo.tipo = tipoDetectado;
+          }
+        }
       }
     }
+  }
 
     private detectarTipoDesdeNombre(tipo: string): TipoArchivo | undefined {
       switch (tipo) {
@@ -185,57 +311,95 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
       }
     }
 
-    private actualizarArchivoExistente(): void {
-      if (!this.archivoEditandoId) {
-        return;
-      }
+private actualizarArchivoExistente(): void {
+  if (!this.archivoEditandoId) {
+    console.error('[❌ ERROR] ID de archivo no válido');
+    alert('Error: ID de archivo no válido');
+    return;
+  }
 
-      if (this.archivoNuevoSeleccionado) {
-        const formData = new FormData();
-        formData.append('archivo', this.archivoNuevoSeleccionado, this.archivoNuevoSeleccionado.name);
-        Object.keys(this.nuevoArchivo).forEach(key => {
-          const value = this.nuevoArchivo[key as keyof Archivo];
-          if (value !== undefined && value !== null) {
-            formData.append(key, value.toString());
-          }
-        });
+  // Validaciones
+  if (!this.validarDatosArchivo()) {
+    return;
+  }
 
-        this.archivoService.actualizarArchivoConArchivo(this.archivoEditandoId, formData).subscribe({
-          next: () => {
-            alert('Archivo y metadatos actualizados correctamente');
-            this.router.navigate([
-              '/viajes-previstos',
-              this.viajePrevistoId,
-              'itinerarios',
-              this.itinerarioId,
-              'actividades',
-              this.actividadId,
-              'archivos'
-            ]);
-          },
-          error: (err) => console.error('[actualizarArchivoExistente] Error actualizando archivo con archivo:', err)
-        });
-      } else {
-        this.archivoService.actualizarArchivo(
-          this.archivoEditandoId,
-          this.nuevoArchivo
-        ).subscribe({
-          next: () => {
-            alert('Metadatos actualizados correctamente');
-            this.router.navigate([
-              '/viajes-previstos',
-              this.viajePrevistoId,
-              'itinerarios',
-              this.itinerarioId,
-              'actividades',
-              this.actividadId,
-              'archivos'
-            ]);
-          },
-          error: (err) => console.error('[actualizarArchivoExistente] Error actualizando metadatos:', err)
-        });
+  console.log('[🚀 INICIANDO ACTUALIZACIÓN]');
+  console.log('  - ID:', this.archivoEditandoId);
+  console.log('  - Datos originales:', this.archivoOriginal);
+  console.log('  - Datos nuevos:', this.nuevoArchivo);
+  console.log('  - Archivo nuevo:', this.archivoNuevoSeleccionado?.name);
+
+  this.guardandoArchivo = true;
+
+  if (this.archivoNuevoSeleccionado) {
+    // Actualizar archivo + metadatos
+    console.log('[📤 MODO] Actualizando archivo y metadatos');
+    
+    const formData = new FormData();
+    formData.append('archivo', this.archivoNuevoSeleccionado, this.archivoNuevoSeleccionado.name);
+    
+    // ✅ IMPORTANTE: Asegurar que todos los campos se envían
+    const camposAEnviar = {
+      tipo: this.nuevoArchivo.tipo,
+      descripcion: this.nuevoArchivo.descripcion || '',
+      horaCaptura: this.nuevoArchivo.horaCaptura,
+      geolocalizacion: this.nuevoArchivo.geolocalizacion || '',
+      fechaCreacion: this.nuevoArchivo.fechaCreacion || new Date().toISOString()
+    };
+
+    console.log('[📋 CAMPOS A ENVIAR]', camposAEnviar);
+
+    Object.keys(camposAEnviar).forEach(key => {
+      const value = camposAEnviar[key as keyof typeof camposAEnviar];
+      if (value !== undefined && value !== null) {
+        formData.append(key, value.toString());
+        console.log(`  - ${key}: ${value}`);
       }
-    }
+    });
+
+    this.archivoService.actualizarArchivoConArchivo(this.archivoEditandoId, formData).subscribe({
+      next: (response) => {
+        console.log('[✅ ÉXITO] Respuesta del servidor:', response);
+        this.mostrarMensajeExito('Archivo y metadatos actualizados correctamente');
+        this.guardandoArchivo = false;
+        this.volverAListaArchivos();
+      },
+      error: (err) => {
+        console.error('[❌ ERROR] Actualizando archivo completo:', err);
+        this.mostrarMensajeError('Error al actualizar el archivo: ' + this.extraerMensajeError(err));
+        this.guardandoArchivo = false;
+      }
+    });
+  } else {
+    // Solo actualizar metadatos
+    console.log('[📝 MODO] Actualizando solo metadatos');
+    
+    // ✅ CREAR OBJETO LIMPIO con solo los campos necesarios
+    const metadatosLimpios = {
+      tipo: this.nuevoArchivo.tipo,
+      descripcion: this.nuevoArchivo.descripcion || '',
+      horaCaptura: this.nuevoArchivo.horaCaptura,
+      geolocalizacion: this.nuevoArchivo.geolocalizacion || '',
+      fechaCreacion: this.nuevoArchivo.fechaCreacion || this.archivoOriginal?.fechaCreacion || new Date().toISOString()
+    };
+
+    console.log('[📋 METADATOS A ENVIAR]', metadatosLimpios);
+    
+    this.archivoService.actualizarArchivo(this.archivoEditandoId, metadatosLimpios).subscribe({
+      next: (response) => {
+        console.log('[✅ ÉXITO] Respuesta del servidor:', response);
+        this.mostrarMensajeExito('Metadatos actualizados correctamente');
+        this.guardandoArchivo = false;
+        this.volverAListaArchivos();
+      },
+      error: (err) => {
+        console.error('[❌ ERROR] Actualizando metadatos:', err);
+        this.mostrarMensajeError('Error al actualizar los metadatos: ' + this.extraerMensajeError(err));
+        this.guardandoArchivo = false;
+      }
+    });
+  }
+}
 
     // ✅ Método corregido para parsear metadatos específicos de cada archivo
   private parsearMetadatosArchivo(nombreArchivo: string): Partial<Archivo> {
@@ -467,17 +631,117 @@ private mostrarDialogoSeleccion(actividadesCoincidentes: any[], actividadActual:
         'actividades'
       ]);
     }
-
-    resetFormulario(): void {
-      this.archivosSeleccionados = [];
-      this.nuevoArchivo = {
-        tipo: 'foto',
-        descripcion: '',
-        horaCaptura: this.getHoraActual(),
-        geolocalizacion: '',
-        fechaCreacion: new Date().toISOString()
-      };
+// ✅ 6. AÑADIR NUEVOS MÉTODOS al final de la clase
+  
+  // Método para limpiar selección de archivo en edición
+  limpiarArchivoSeleccionado(): void {
+    this.archivoNuevoSeleccionado = null;
+    const fileInput = document.getElementById('fileInput') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
     }
+    console.log('[🗑️ ARCHIVO LIMPIADO]');
+  }
+
+  // Verificar si el usuario ha hecho cambios manuales
+  private hayCambiosManuales(): boolean {
+    if (!this.archivoOriginal) return false;
+    
+    return (
+      this.nuevoArchivo.descripcion !== this.archivoOriginal.descripcion ||
+      this.nuevoArchivo.tipo !== this.archivoOriginal.tipo
+    );
+  }
+
+  // Validación de datos del archivo
+private validarDatosArchivo(): boolean {
+  const errores: string[] = [];
+
+  if (!this.nuevoArchivo.tipo) {
+    errores.push('El tipo de archivo es obligatorio');
+  }
+
+  if (!this.nuevoArchivo.horaCaptura) {
+    errores.push('La hora de captura es obligatoria');
+  } else {
+    // Validar formato de hora
+    const horaRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
+    if (!horaRegex.test(this.nuevoArchivo.horaCaptura)) {
+      errores.push('El formato de hora no es válido (HH:mm o HH:mm:ss)');
+    }
+  }
+
+  // Validar descripción (opcional pero si existe debe tener contenido útil)
+  if (this.nuevoArchivo.descripcion && this.nuevoArchivo.descripcion.trim().length < 3) {
+    errores.push('La descripción debe tener al menos 3 caracteres');
+  }
+
+  if (errores.length > 0) {
+    console.error('[❌ VALIDACIÓN] Errores encontrados:', errores);
+    this.mostrarMensajeError('Errores de validación:\n' + errores.join('\n'));
+    return false;
+  }
+
+  console.log('[✅ VALIDACIÓN] Datos válidos');
+  return true;
+}
+
+
+  // Métodos para mostrar mensajes
+private mostrarMensajeExito(mensaje: string): void {
+  alert('✅ ' + mensaje);
+  console.log('[✅ ÉXITO]', mensaje);
+}
+
+private mostrarMensajeError(mensaje: string): void {
+  alert('❌ ' + mensaje);
+  console.error('[❌ ERROR]', mensaje);
+}
+
+  // Navegar a la lista de archivos
+  volverAListaArchivos(): void {
+    this.router.navigate([
+      '/viajes-previstos',
+      this.viajePrevistoId,
+      'itinerarios',
+      this.itinerarioId,
+      'actividades',
+      this.actividadId,
+      'archivos'
+    ]);
+  }
+
+  resetFormulario(): void {
+    this.archivosSeleccionados = [];
+    this.archivoNuevoSeleccionado = null; // ✅ AÑADIR esta línea
+    this.archivoOriginal = null; // ✅ AÑADIR esta línea
+    this.guardandoArchivo = false; // ✅ AÑADIR esta línea
+    
+    this.nuevoArchivo = {
+      tipo: 'foto',
+      descripcion: '',
+      horaCaptura: this.getHoraActual(),
+      geolocalizacion: '',
+      fechaCreacion: new Date().toISOString()
+    };
+  }
+
+  // ✅ NUEVOS GETTERS
+  get tituloFormulario(): string {
+    return this.modoEdicion ? 'Editar Archivo' : 'Subir Nuevos Archivos';
+  }
+
+  get hayCambios(): boolean {
+    if (!this.modoEdicion || !this.archivoOriginal) return false;
+    
+    return (
+      this.archivoNuevoSeleccionado !== null ||
+      this.nuevoArchivo.tipo !== this.archivoOriginal.tipo ||
+      this.nuevoArchivo.descripcion !== this.archivoOriginal.descripcion ||
+      this.nuevoArchivo.horaCaptura !== this.archivoOriginal.horaCaptura ||
+      this.nuevoArchivo.geolocalizacion !== this.archivoOriginal.geolocalizacion
+    );
+  }
 
     getHoraActual(): string {
       const ahora = new Date();
@@ -518,6 +782,14 @@ private mostrarDialogoSeleccion(actividadesCoincidentes: any[], actividadActual:
         console.log('[🛑 CANCELADO] Subida cancelada por el usuario');
       }
     }
+
+    tiposArchivo = [
+      { value: 'foto', label: 'Foto' },
+      { value: 'video', label: 'Vídeo' },
+      { value: 'audio', label: 'Audio' },
+      { value: 'texto', label: 'Texto' },
+      { value: 'imagen', label: 'Imagen' }
+    ];
   }
 
 

@@ -998,29 +998,54 @@ app.put('/archivos/:id/archivo', upload.single('archivo'), (req, res) => {
 });
 
 // 5️⃣ PUT actualizar solo metadatos
+// 5️⃣ PUT actualizar solo metadatos (VERSIÓN CORREGIDA)
 app.put('/archivos/:id', (req, res) => {
   const id = req.params.id;
-  const { actividadId, tipo, nombreArchivo, descripcion, horaCaptura, version, geolocalizacion, metadatos } = req.body;
+  const { actividadId, tipo, nombreArchivo, descripcion, horaCaptura, version, geolocalizacion, metadatos, fechaCreacion } = req.body;
 
   const campos = [];
   const valores = [];
 
-  if (actividadId !== undefined) campos.push('actividadId = ?');
-  if (tipo !== undefined) campos.push('tipo = ?');
-  if (nombreArchivo !== undefined) campos.push('nombreArchivo = ?');
-  if (descripcion !== undefined) campos.push('descripcion = ?');
-  if (horaCaptura !== undefined) campos.push('horaCaptura = ?');
-  if (version !== undefined) campos.push('version = ?');
-  if (geolocalizacion !== undefined) campos.push('geolocalizacion = ?');
-  if (metadatos !== undefined) campos.push('metadatos = ?');
+  // 1️⃣ Agregar campos condicionalmente
+  if (actividadId !== undefined) { campos.push('actividadId = ?'); valores.push(actividadId); }
+  if (tipo !== undefined) { campos.push('tipo = ?'); valores.push(tipo); }
+  if (nombreArchivo !== undefined) { campos.push('nombreArchivo = ?'); valores.push(nombreArchivo); }
+  if (descripcion !== undefined) { campos.push('descripcion = ?'); valores.push(descripcion); }
+  if (horaCaptura !== undefined) { campos.push('horaCaptura = ?'); valores.push(horaCaptura); }
+  if (version !== undefined) { campos.push('version = ?'); valores.push(version); }
+  if (geolocalizacion !== undefined) { campos.push('geolocalizacion = ?'); valores.push(geolocalizacion); }
+  if (metadatos !== undefined) { campos.push('metadatos = ?'); valores.push(metadatos); }
+  if (fechaCreacion !== undefined) { campos.push('fechaCreacion = ?'); valores.push(fechaCreacion); }
 
+  // 2️⃣ Siempre actualizar fechaActualizacion
   campos.push("fechaActualizacion = datetime('now')");
+
+  // 3️⃣ Agregar ID al final para el WHERE
   valores.push(id);
 
   const sql = `UPDATE archivos SET ${campos.join(', ')} WHERE id = ?`;
+  
+  console.log('📝 Ejecutando UPDATE con:', { sql, valores }); // ← Debugging
+
   db.run(sql, valores, function (err) {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ updated: this.changes });
+    if (err) {
+      console.error('❌ Error en UPDATE:', err);
+      return res.status(500).json({ error: err.message });
+    }
+    
+    console.log('✅ Resultado UPDATE:', { changes: this.changes, lastID: this.lastID }); // ← Debugging
+    
+    if (this.changes === 0) {
+      console.warn('⚠️ No se actualizó ningún registro. Posibles causas:');
+      console.warn('- El ID no existe');
+      console.warn('- Los datos enviados son idénticos a los existentes');
+    }
+    
+    res.json({ 
+      updated: this.changes,
+      id: id,
+      cambiosRealizados: campos.filter(c => !c.includes('fechaActualizacion')) 
+    });
   });
 });
 

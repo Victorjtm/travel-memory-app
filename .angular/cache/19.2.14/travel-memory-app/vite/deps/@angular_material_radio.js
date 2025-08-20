@@ -2,19 +2,29 @@ import {
   NG_VALUE_ACCESSOR
 } from "./chunk-7HUIPI3G.js";
 import {
-  MatRipple,
-  MatRippleModule,
-  _StructuralStylesLoader
-} from "./chunk-G3SZCCPV.js";
+  UniqueSelectionDispatcher
+} from "./chunk-SV3KJJPM.js";
 import "./chunk-JJM6S4OE.js";
-import "./chunk-LCL76FDH.js";
+import {
+  MatRipple,
+  MatRippleModule
+} from "./chunk-G6ERHWLO.js";
+import "./chunk-GPU76PBU.js";
+import "./chunk-HLJWCQAA.js";
+import {
+  _StructuralStylesLoader
+} from "./chunk-SRIFR4PD.js";
 import {
   FocusMonitor,
   MatCommonModule,
-  _CdkPrivateStyleLoader,
   _IdGenerator
-} from "./chunk-EGDX3NSR.js";
+} from "./chunk-6KF2P5XJ.js";
+import "./chunk-2O4WY5GE.js";
 import "./chunk-H3T65ING.js";
+import {
+  _CdkPrivateStyleLoader
+} from "./chunk-VF7CLYMA.js";
+import "./chunk-TAPYLPZS.js";
 import "./chunk-FJ2LSRVL.js";
 import "./chunk-3B7WPXDT.js";
 import {
@@ -27,7 +37,6 @@ import {
   ElementRef,
   EventEmitter,
   HostAttributeToken,
-  Injectable,
   InjectionToken,
   Injector,
   Input,
@@ -50,7 +59,6 @@ import {
   ɵɵcontentQuery,
   ɵɵdefineComponent,
   ɵɵdefineDirective,
-  ɵɵdefineInjectable,
   ɵɵdefineInjector,
   ɵɵdefineNgModule,
   ɵɵelement,
@@ -68,52 +76,6 @@ import {
   ɵɵviewQuery
 } from "./chunk-MTES5EJZ.js";
 import "./chunk-S35MAB2V.js";
-
-// node_modules/@angular/cdk/fesm2022/unique-selection-dispatcher-DtHZDqyJ.mjs
-var UniqueSelectionDispatcher = class _UniqueSelectionDispatcher {
-  _listeners = [];
-  /**
-   * Notify other items that selection for the given name has been set.
-   * @param id ID of the item.
-   * @param name Name of the item.
-   */
-  notify(id, name) {
-    for (let listener of this._listeners) {
-      listener(id, name);
-    }
-  }
-  /**
-   * Listen for future changes to item selection.
-   * @return Function used to deregister listener
-   */
-  listen(listener) {
-    this._listeners.push(listener);
-    return () => {
-      this._listeners = this._listeners.filter((registered) => {
-        return listener !== registered;
-      });
-    };
-  }
-  ngOnDestroy() {
-    this._listeners = [];
-  }
-  static ɵfac = function UniqueSelectionDispatcher_Factory(__ngFactoryType__) {
-    return new (__ngFactoryType__ || _UniqueSelectionDispatcher)();
-  };
-  static ɵprov = ɵɵdefineInjectable({
-    token: _UniqueSelectionDispatcher,
-    factory: _UniqueSelectionDispatcher.ɵfac,
-    providedIn: "root"
-  });
-};
-(() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && setClassMetadata(UniqueSelectionDispatcher, [{
-    type: Injectable,
-    args: [{
-      providedIn: "root"
-    }]
-  }], null, null);
-})();
 
 // node_modules/@angular/material/fesm2022/internal-form-field-grv62mCZ.mjs
 var _c0 = ["mat-internal-form-field", ""];

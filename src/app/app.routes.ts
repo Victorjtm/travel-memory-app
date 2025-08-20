@@ -14,6 +14,7 @@ import { TipoActividadFormComponent } from './paginas/configuracion/crud-tipos-a
 import { ActividadesDisponiblesComponent } from './paginas/configuracion/actividades-disponibles/actividades-disponibles.component';
 import { FormularioActividadComponent } from './paginas/configuracion/actividades-disponibles/formulario-actividad/formulario-actividad.component';
 import { AlbumLibroComponent } from './paginas/viajes-previstos/itinerario/album-libro/album-libro.component';
+import { FormularioArchivosComponent } from './paginas/viajes-previstos/formulario-archivos-actividades-itinerario.component';
 
 export const routes: Routes = [
   { path: '', component: InicioComponent },
@@ -75,6 +76,10 @@ export const routes: Routes = [
     path: 'viajes-previstos/:viajePrevistoId/itinerarios/:itinerarioId/actividades/:actividadId/archivos/editar/:archivoId',
     loadComponent: () => import('./paginas/viajes-previstos/formulario-archivos-actividades-itinerario.component').then(m => m.FormularioArchivosComponent)
   },
+
+  // Nueva ruta para el botón "Seleccionar Archivos" desde Inicio
+{ path: 'formulario-archivos-actividades-itinerario', component: FormularioArchivosComponent },
+
 
   // Rutas para el álbum en formato libro desde viajes previstos
   {
