@@ -254,45 +254,68 @@ getDebugInfo(): any {
     }
   }
 
-  private parsearNombreArchivo(nombre: string): void {
-    const regex = /(IMG|VID|AUDIO)?(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/i;
-    const match = nombre.match(regex);
+private parsearNombreArchivo(nombre: string): void {
+  const regex = /(IMG|VID|AUDIO)?(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/i;
+  const match = nombre.match(regex);
 
-    if (match) {
-      const tipoRaw = match[1]?.toLowerCase() || '';
-      const año = match[2];
-      const mes = match[3];
-      const dia = match[4];
-      const hora = match[5];
-      const minuto = match[6];
-      const segundo = match[7];
+  if (!match) {
+    console.log(`[❌ NO MATCH] ${nombre} no coincide con el patrón de fecha`);
+    return;
+  }
 
-      const horaCaptura = `${hora}:${minuto}`;
-      const fechaISO = `${año}-${mes}-${dia}T${hora}:${minuto}:${segundo}`;
+  const tipoRaw = match[1]?.toLowerCase() || '';
+  const año = match[2];
+  const mes = match[3];
+  const dia = match[4];
+  const hora = match[5];
+  const minuto = match[6];
+  const segundo = match[7];
 
-      // Solo actualizar si no estamos en modo edición o si es la primera vez
-      if (!this.modoEdicion) {
-        this.nuevoArchivo = {
-          ...this.nuevoArchivo,
-          descripcion: this.nuevoArchivo.descripcion || `Archivo importado automáticamente: ${nombre}`,
-          horaCaptura: horaCaptura,
-          fechaCreacion: new Date(fechaISO).toISOString(),
-          tipo: this.detectarTipoDesdeNombre(tipoRaw) || this.nuevoArchivo.tipo,
-          geolocalizacion: this.nuevoArchivo.geolocalizacion || ''
-        };
-      } else {
-        // En modo edición, solo sugerir cambios si el usuario no ha modificado manualmente
-        if (!this.hayCambiosManuales()) {
-          this.nuevoArchivo.horaCaptura = horaCaptura;
-          this.nuevoArchivo.fechaCreacion = new Date(fechaISO).toISOString();
-          const tipoDetectado = this.detectarTipoDesdeNombre(tipoRaw);
-          if (tipoDetectado) {
-            this.nuevoArchivo.tipo = tipoDetectado;
-          }
-        }
+  // Crear fecha local
+  const fechaLocal = new Date(Number(año), Number(mes) - 1, Number(dia), Number(hora), Number(minuto), Number(segundo));
+  const horaCaptura = `${hora}:${minuto}:${segundo}`;
+
+  // Construir ISO local para evitar desfase UTC
+  const fechaISO = `${fechaLocal.getFullYear()}-${(fechaLocal.getMonth() + 1)
+    .toString()
+    .padStart(2, '0')}-${fechaLocal.getDate().toString().padStart(2, '0')}T${fechaLocal
+    .getHours()
+    .toString()
+    .padStart(2, '0')}:${fechaLocal.getMinutes().toString().padStart(2, '0')}:${fechaLocal
+    .getSeconds()
+    .toString()
+    .padStart(2, '0')}`;
+
+  const tipoDetectado = this.detectarTipoDesdeNombre(tipoRaw);
+
+  // Solo actualizar si no estamos en modo edición o si es la primera vez
+  if (!this.modoEdicion) {
+    this.nuevoArchivo = {
+      ...this.nuevoArchivo,
+      descripcion: this.nuevoArchivo.descripcion || `Archivo importado automáticamente: ${nombre}`,
+      fechaCreacion: fechaISO,
+      horaCaptura: horaCaptura,
+      tipo: tipoDetectado || this.nuevoArchivo.tipo,
+      geolocalizacion: this.nuevoArchivo.geolocalizacion || ''
+    };
+  } else {
+    // En modo edición, solo sugerir cambios si el usuario no ha modificado manualmente
+    if (!this.hayCambiosManuales()) {
+      this.nuevoArchivo.fechaCreacion = fechaISO;
+      this.nuevoArchivo.horaCaptura = horaCaptura;
+      if (tipoDetectado) {
+        this.nuevoArchivo.tipo = tipoDetectado;
       }
     }
   }
+
+  console.log(`[📅 PARSEANDO] ${nombre}`);
+  console.log(`  - Fecha local: ${fechaLocal}`);
+  console.log(`  - Fecha ISO (local): ${this.nuevoArchivo.fechaCreacion}`);
+  console.log(`  - Hora captura: ${horaCaptura}`);
+}
+
+
 
     private detectarTipoDesdeNombre(tipo: string): TipoArchivo | undefined {
       switch (tipo) {
@@ -402,173 +425,183 @@ private actualizarArchivoExistente(): void {
 }
 
     // ✅ Método corregido para parsear metadatos específicos de cada archivo
-  private parsearMetadatosArchivo(nombreArchivo: string): Partial<Archivo> {
-    const regex = /(IMG|VID|AUDIO)?(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/i;
-    const match = nombreArchivo.match(regex);
+private parsearMetadatosArchivo(nombreArchivo: string): Partial<Archivo> {
+  const regex = /(IMG|VID|AUDIO)?[-_]?(\d{4})[-_]?(\d{2})[-_]?(\d{2})[-_]?(\d{2})[-_]?(\d{2})[-_]?(\d{2})/i;
 
-    // Metadatos base con fecha actual como fallback
-    const metadatos: Partial<Archivo> = {
-      tipo: this.nuevoArchivo.tipo || 'foto',
-      descripcion: `Archivo importado automáticamente: ${nombreArchivo}`,
-      horaCaptura: this.getHoraActual(),
-      geolocalizacion: this.nuevoArchivo.geolocalizacion || '',
-      fechaCreacion: new Date().toISOString() // Fallback a fecha actual
-    };
+  const match = nombreArchivo.match(regex);
 
-    if (match) {
-      const tipoRaw = match[1]?.toLowerCase() || '';
-      const año = match[2];
-      const mes = match[3];
-      const dia = match[4];
-      const hora = match[5];
-      const minuto = match[6];
-      const segundo = match[7];
+  // Metadatos base como fallback
+  const metadatos: Partial<Archivo> = {
+    tipo: this.nuevoArchivo.tipo || 'foto',
+    descripcion: `Archivo importado automáticamente: ${nombreArchivo}`,
+    horaCaptura: this.getHoraActual(), // fallback si no hay match
+    geolocalizacion: this.nuevoArchivo.geolocalizacion || '',
+    fechaCreacion: new Date().toISOString() // fallback a fecha actual
+  };
 
-      // ✅ CORREGIDO: Construir fecha ISO completa
-      const fechaISO = `${año}-${mes}-${dia}T${hora}:${minuto}:${segundo}.000Z`;
-      const horaCaptura = `${hora}:${minuto}:${segundo}`;
+  if (match) {
+    const tipoRaw = match[1]?.toLowerCase() || '';
+    const año = parseInt(match[2], 10);
+    const mes = parseInt(match[3], 10);
+    const dia = parseInt(match[4], 10);
+    const hora = parseInt(match[5], 10);
+    const minuto = parseInt(match[6], 10);
+    const segundo = parseInt(match[7], 10);
 
-      console.log(`[📅 PARSEANDO] ${nombreArchivo}:`);
-      console.log(`  - Fecha ISO construida: ${fechaISO}`);
-      console.log(`  - Hora captura: ${horaCaptura}`);
+    // Validar que los valores extraídos sean válidos
+    if (this.validarFechaHora(año, mes, dia, hora, minuto, segundo)) {
+      // Crear fecha local según nombre del archivo
+      const fechaLocal = new Date(año, mes - 1, dia, hora, minuto, segundo);
 
-      // Validar que la fecha sea válida
-      const fechaParseada = new Date(fechaISO);
-      if (!isNaN(fechaParseada.getTime())) {
-        metadatos.fechaCreacion = fechaParseada.toISOString();
-        metadatos.horaCaptura = horaCaptura;
-        
-        console.log(`  - ✅ Fecha válida asignada: ${metadatos.fechaCreacion}`);
-      } else {
-        console.log(`  - ❌ Fecha inválida, usando fecha actual como fallback`);
-      }
+      // Formatear ISO local sin "Z" para mantener la hora exacta
+      const fechaISO = fechaLocal.getFullYear() + '-' +
+        String(fechaLocal.getMonth() + 1).padStart(2, '0') + '-' +
+        String(fechaLocal.getDate()).padStart(2, '0') + 'T' +
+        String(fechaLocal.getHours()).padStart(2, '0') + ':' +
+        String(fechaLocal.getMinutes()).padStart(2, '0') + ':' +
+        String(fechaLocal.getSeconds()).padStart(2, '0');
 
-      // Actualizar descripción y tipo
-      metadatos.descripcion = `Archivo importado automáticamente: ${nombreArchivo}`;
-      
+      // Actualizar metadatos con valores parseados
+      metadatos.fechaCreacion = fechaISO;
+      metadatos.horaCaptura = String(hora).padStart(2, '0') + ':' + 
+                             String(minuto).padStart(2, '0') + ':' + 
+                             String(segundo).padStart(2, '0');
+
+      // Detectar tipo de archivo desde el nombre
       const tipoDetectado = this.detectarTipoDesdeNombre(tipoRaw);
       if (tipoDetectado) {
         metadatos.tipo = tipoDetectado;
       }
-    } else {
-      console.log(`[❌ NO MATCH] ${nombreArchivo} no coincide con el patrón de fecha`);
-    }
 
-    return metadatos;
+      console.log(`[📅 PARSEANDO] ${nombreArchivo}`);
+      console.log(`  - Fecha local: ${fechaLocal}`);
+      console.log(`  - Fecha ISO (local): ${metadatos.fechaCreacion}`);
+      console.log(`  - Hora captura: ${metadatos.horaCaptura}`);
+    } else {
+      console.log(`[❌ FECHA INVÁLIDA] ${nombreArchivo} contiene fecha/hora inválida`);
+    }
+  } else {
+    console.log(`[❌ NO MATCH] ${nombreArchivo} no coincide con el patrón de fecha`);
   }
 
+  return metadatos;
+}
+
+// Método auxiliar para validar fecha y hora
+private validarFechaHora(año: number, mes: number, dia: number, hora: number, minuto: number, segundo: number): boolean {
+  // Validar rangos básicos
+  if (año < 1900 || año > 2100) return false;
+  if (mes < 1 || mes > 12) return false;
+  if (dia < 1 || dia > 31) return false;
+  if (hora < 0 || hora > 23) return false;
+  if (minuto < 0 || minuto > 59) return false;
+  if (segundo < 0 || segundo > 59) return false;
+
+  // Validar que la fecha sea válida (ej: no 31 de febrero)
+  const fechaTest = new Date(año, mes - 1, dia);
+  return fechaTest.getFullYear() === año && 
+         fechaTest.getMonth() === mes - 1 && 
+         fechaTest.getDate() === dia;
+}
+
+
+
   // ✅ NUEVO: Método de subida con lógica mejorada para coincidencias
- private async subirNuevosArchivos(): Promise<void> {
+private async subirNuevosArchivos(): Promise<void> {
   if (this.archivosSeleccionados.length === 0) {
     return;
   }
 
-  console.log(`[🚀 INICIO SUBIDA] Procesando ${this.archivosSeleccionados.length} archivo(s)`);
+  this.subiendoArchivos = true;
+  this.totalArchivos = this.archivosSeleccionados.length;
+  this.archivoActualIndex = 0;
+
+  console.log(`[🚀 INICIO SUBIDA] Procesando ${this.totalArchivos} archivo(s)`);
 
   for (const file of this.archivosSeleccionados) {
+    this.nombreArchivoActual = file.name;
+    this.porcentajeArchivoActual = 0;
+
     console.log(`\n[🔍 PROCESANDO] ${file.name}`);
 
-    // Buscar coincidencias
+    // 1️⃣ Buscar coincidencias de actividad
     const resultado = await this.archivoService
       .buscarCoincidencias(file, this.viajePrevistoId, this.actividadId)
       .toPromise();
 
-    if (!resultado || !Array.isArray(resultado.actividadesCoincidentes)) {
-      console.warn(`[⚠️ ERROR] Respuesta inválida al buscar coincidencias para: ${file.name}`);
-      continue;
-    }
-
-    console.log(`[📊 COINCIDENCIAS] ${resultado.actividadesCoincidentes.length} encontradas`);
-
     let actividadElegidaId = this.actividadId;
 
-    // ✅ Si hay solo 1 coincidencia → asignar directamente
-    if (resultado.actividadesCoincidentes.length === 1) {
-      const primeraCoincidencia = resultado.actividadesCoincidentes[0];
-      console.log(`[🔍 ESTRUCTURA REAL]:`, Object.keys(primeraCoincidencia));
-      console.log(`[🔍 COINCIDENCIA COMPLETA]:`, primeraCoincidencia);
-
-      const actividadId = primeraCoincidencia.id ||
-                          primeraCoincidencia.actividadId ||
-                          primeraCoincidencia.actividad_id ||
-                          primeraCoincidencia.ID;
-
-      if (actividadId && !isNaN(Number(actividadId))) {
-        actividadElegidaId = Number(actividadId);
+    if (resultado && Array.isArray(resultado.actividadesCoincidentes)) {
+      if (resultado.actividadesCoincidentes.length === 1) {
+        const act = resultado.actividadesCoincidentes[0];
+        actividadElegidaId = Number(act.id || act.actividadId || act.actividad_id || act.ID) || this.actividadId;
         console.log(`[✅ AUTO-ASIGNADA] ${file.name} → Actividad ID: ${actividadElegidaId}`);
-      } else {
-        console.error(`[❌ ERROR] No se encontró ID válido en:`, primeraCoincidencia);
-        actividadElegidaId = this.actividadId; // fallback
-      }
-    }
-    // ✅ Si hay más de una coincidencia → mostrar diálogo
-    else if (resultado.actividadesCoincidentes.length > 1) {
-      const coincidenciasValidas = resultado.actividadesCoincidentes.filter(act => {
-        const id = act.id || act.actividadId || act.actividad_id || act.ID;
-        return id && !isNaN(Number(id));
-      });
-
-      if (coincidenciasValidas.length === 0) {
-        console.error(`[❌ ERROR] Ninguna coincidencia tiene ID válido`);
-        actividadElegidaId = this.actividadId; // fallback
-      } else {
-        const actividadElegida = await this.mostrarDialogoSeleccion(
-          coincidenciasValidas,
-          resultado.actividadActual
-        );
-
-        if (actividadElegida) {
-          const id = actividadElegida.id || actividadElegida.actividadId || actividadElegida.actividad_id || actividadElegida.ID;
-          actividadElegidaId = Number(id);
-          console.log(`[✅ ACTIVIDAD] Seleccionada ID: ${actividadElegidaId}`);
-        } else {
-          console.log(`[❌ CANCELADO] Usuario canceló la selección para: ${file.name}`);
-          continue; // saltar a siguiente archivo
+      } else if (resultado.actividadesCoincidentes.length > 1) {
+        const coincidenciasValidas = resultado.actividadesCoincidentes.filter(act => {
+          const id = act.id || act.actividadId || act.actividad_id || act.ID;
+          return id && !isNaN(Number(id));
+        });
+        if (coincidenciasValidas.length > 0) {
+          const actividadElegida = await this.mostrarDialogoSeleccion(coincidenciasValidas, resultado.actividadActual);
+          if (actividadElegida) {
+            actividadElegidaId = Number(actividadElegida.id || actividadElegida.actividadId || actividadElegida.actividad_id || actividadElegida.ID);
+            console.log(`[✅ ACTIVIDAD] Seleccionada ID: ${actividadElegidaId}`);
+          } else {
+            console.log(`[❌ CANCELADO] Usuario canceló la selección para: ${file.name}`);
+            continue; // saltar a siguiente archivo
+          }
         }
+      } else {
+        console.log(`[ℹ️ SIN COINCIDENCIAS] Usando actividad actual ID: ${actividadElegidaId}`);
       }
     }
-    // ✅ Si no hay coincidencias → usar actividad actual
-    else {
-      console.log(`[ℹ️ SIN COINCIDENCIAS] Usando actividad actual ID: ${actividadElegidaId}`);
-    }
 
-    // ✅ Parsear metadatos
-const metadatosArchivo = this.parsearMetadatosArchivo(file.name);
+    // 2️⃣ Parsear metadatos y preparar FormData
+    const metadatosArchivo = this.parsearMetadatosArchivo(file.name);
+    metadatosArchivo.fechaCreacion = new Date(file.lastModified).toISOString();
+    metadatosArchivo.horaCaptura = new Date(file.lastModified).toLocaleTimeString("es-ES", {
+      hour12: false
+    });
 
-// Sobrescribir o añadir la fecha real del archivo
-metadatosArchivo.fechaCreacion = new Date(file.lastModified).toISOString();
-metadatosArchivo.horaCaptura = new Date(file.lastModified).toLocaleTimeString("es-ES", {
-  hour12: false
-});
+    const formData = new FormData();
+    formData.append('actividadId', actividadElegidaId.toString());
+    Object.keys(metadatosArchivo).forEach(key => {
+      const value = metadatosArchivo[key as keyof Archivo];
+      if (value !== undefined && value !== null) {
+        formData.append(key, value.toString());
+      }
+    });
+    formData.append('archivos', file, file.name);
 
-const formData = new FormData();
-formData.append('actividadId', actividadElegidaId.toString());
-
-Object.keys(metadatosArchivo).forEach(key => {
-  const value = metadatosArchivo[key as keyof Archivo];
-  if (value !== undefined && value !== null) {
-    formData.append(key, value.toString());
-  }
-});
-formData.append('archivos', file, file.name);
-
-
+    // 3️⃣ Simular progreso y subir archivo
     try {
+      const pasos = 20; // pasos de progreso
+      for (let i = 1; i <= pasos; i++) {
+        await new Promise(resolve => setTimeout(resolve, 50)); // 50ms entre pasos
+        this.porcentajeArchivoActual = (i / pasos) * 100;
+      }
+
       await this.archivoService.subirArchivos(formData).toPromise();
-      console.log(`[✅ SUBIDO] ${file.name} procesado correctamente`);
+      console.log(`[✅ SUBIDO] ${file.name} correctamente`);
     } catch (error) {
       console.error(`[❌ ERROR SUBIDA] ${file.name}:`, error);
-      alert(`Error subiendo ${file.name}: ${error}`);
+      alert(`Error subiendo ${file.name}: ${this.extraerMensajeError(error)}`);
       this.porcentajeArchivoActual = 0;
       this.nombreArchivoActual = `❌ Error: ${file.name}`;
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
+
+    // Archivo completado
+    this.archivoActualIndex++;
+    this.porcentajeArchivoActual = 0;
   }
 
   console.log(`[🏁 FIN SUBIDA] Todos los archivos procesados`);
+  this.subiendoArchivos = false;
   this.resetFormulario();
   this.cargarArchivos();
 }
+
 
 
   // ✅ MÉTODO AUXILIAR: Convertir timestamp EXIF a ISO (si necesitas usarlo)

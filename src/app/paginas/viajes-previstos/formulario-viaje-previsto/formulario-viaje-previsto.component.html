@@ -1,24 +1,57 @@
-<h3>{{ index !== null ? 'Editar viaje' : 'Nuevo viaje' }}</h3>
+<form (ngSubmit)="guardar()" #formulario="ngForm" enctype="multipart/form-data">
+  <!-- Campo Nombre del viaje -->
+  <div>
+    <label for="nombre">Nombre del viaje:</label>
+    <input type="text" id="nombre" [(ngModel)]="viaje.nombre" name="nombre" required />
+  </div>
 
-<form (ngSubmit)="guardar()" #formulario="ngForm">
+  <!-- Campo Destino del viaje -->
   <div>
     <label for="destino">Destino:</label>
     <input type="text" id="destino" [(ngModel)]="viaje.destino" name="destino" required />
   </div>
 
+  <!-- Campo Fecha de inicio -->
   <div>
-    <label for="fecha">Fecha:</label>
-    <input type="date" id="fecha" [(ngModel)]="viaje.fecha" name="fecha" required />
+    <label for="fecha_inicio">Fecha de inicio:</label>
+    <input type="date" id="fecha_inicio" [(ngModel)]="viaje.fecha_inicio" name="fecha_inicio" required />
   </div>
 
+  <!-- Campo Fecha de fin -->
+  <div>
+    <label for="fecha_fin">Fecha de fin:</label>
+    <input type="date" id="fecha_fin" [(ngModel)]="viaje.fecha_fin" name="fecha_fin" required />
+  </div>
+
+  <!-- Campo Descripción del viaje -->
   <div>
     <label for="descripcion">Descripción:</label>
-    <textarea id="descripcion" [(ngModel)]="viaje.descripcion" name="descripcion"></textarea>
+    <textarea id="descripcion" [(ngModel)]="viaje.descripcion" name="descripcion" rows="4"></textarea>
   </div>
 
+  <!-- Campo para subir una imagen -->
+  <div>
+    <label for="imagen">Imagen del viaje:</label>
+    <input type="file" id="imagen" (change)="onFileSelected($event)" accept="image/*" />
+    
+    <!-- Vista previa de la imagen seleccionada -->
+    <div *ngIf="imagenPrevia" class="imagen-previa-container">
+      <img [src]="imagenPrevia" alt="Vista previa" class="imagen-previa" />
+      <!-- Botón para eliminar la imagen cargada -->
+      <button type="button" (click)="eliminarImagen()" class="btn-eliminar-imagen">
+        Eliminar imagen
+      </button>
+    </div>
+    
+    <!-- Mensaje que muestra la imagen actual cuando estás en modo edición y no has cambiado la foto -->
+    <div *ngIf="viajeId !== null && viaje.imagen && !imagenPrevia">
+      <p>Imagen actual: {{ viaje.imagen }}</p>
+    </div>
+  </div>
+
+  <!-- Botón para enviar el formulario -->
   <button type="submit" [disabled]="formulario.invalid">
-    {{ index !== null ? 'Actualizar viaje' : 'Agregar viaje' }}
+    <!-- Cambia dinámicamente el texto según sea edición o creación -->
+    {{ viajeId !== null ? 'Actualizar viaje' : 'Agregar viaje' }}
   </button>
 </form>
-
-

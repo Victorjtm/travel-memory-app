@@ -72,22 +72,24 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // Crear la tabla de "viajes" (si no existe)
-db.run( 
-  `CREATE TABLE IF NOT EXISTS viajes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nombre TEXT,
-    destino TEXT,
-    fecha_inicio TEXT,
-    fecha_fin TEXT
-  )`,
-  (err) => {
-    if (err) {
-      console.error("❌ Error al crear la tabla viajes-previstos:", err.message);
-    } else {
-      console.log("✅ Tabla viajes-previstos creada o ya existe.");
-    }
+// Crear tabla de viajes con campo de imagen
+db.run(`
+    CREATE TABLE IF NOT EXISTS viajes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT,
+      destino TEXT,
+      fecha_inicio TEXT,
+      fecha_fin TEXT,
+      imagen TEXT,
+      descripcion TEXT
+    )
+`, (err) => {
+  if (err) {
+    console.error('❌ Error al crear tabla viajes:', err.message);
+  } else {
+    console.log('✅ Tabla viajes verificada/creada');
   }
-);
+});
 
 // Crear la tabla de "ItinerarioGeneral" (si no existe)
 db.run(
@@ -269,7 +271,7 @@ async function getFileMetadata(filePath, fileType) {
 }
 
 // ----------------------------------------
-// RUTAS PARA Viajes
+// RUTAS PARA Viajes prvistgos
 // ----------------------------------------
 
 console.log('Registrando rutas de viajes...');
@@ -281,7 +283,14 @@ app.get('/viajes', (req, res) => {
       res.status(500).json({ error: err.message });
       return;
     }
-    res.json(rows);
+    
+    // Agregar URL completa para las imágenes
+    const viajesConImagenUrl = rows.map(viaje => ({
+      ...viaje,
+      imagen_url: viaje.imagen ? `${req.protocol}://${req.get('host')}/uploads/${viaje.imagen}` : null
+    }));
+    
+    res.json(viajesConImagenUrl);
   });
 });
 
@@ -297,42 +306,102 @@ app.get('/viajes/:id', (req, res) => {
       res.status(404).json({ error: 'Viaje no encontrado' });
       return;
     }
-    res.json(row);
+    
+    // Agregar URL completa de la imagen
+    const viajeConImagenUrl = {
+      ...row,
+      imagen_url: row.imagen ? `${req.protocol}://${req.get('host')}/uploads/${row.imagen}` : null
+    };
+    
+    res.json(viajeConImagenUrl);
   });
 });
 
 
 // Ruta para agregar un nuevo viaje
-app.post('/viajes', (req, res) => {
-  const { nombre, destino, fecha_inicio, fecha_fin } = req.body;
+app.post('/viajes', upload.single('imagen'), (req, res) => {
+  const { nombre, destino, fecha_inicio, fecha_fin, descripcion } = req.body; // <-- añadimos descripcion
+  const imagen = req.file ? req.file.filename : null;
+
+  console.log('📸 Imagen recibida:', req.file);
+  console.log('📝 Datos recibidos:', { nombre, destino, fecha_inicio, fecha_fin, descripcion });
+
   db.run(
-    'INSERT INTO viajes (nombre, destino, fecha_inicio, fecha_fin) VALUES (?, ?, ?, ?)',
-    [nombre, destino, fecha_inicio, fecha_fin],
+    'INSERT INTO viajes (nombre, destino, fecha_inicio, fecha_fin, imagen, descripcion) VALUES (?, ?, ?, ?, ?, ?)', // <-- añadimos descripcion
+    [nombre, destino, fecha_inicio, fecha_fin, imagen, descripcion],
     function (err) {
       if (err) {
+        console.error('❌ Error al insertar viaje:', err);
         res.status(500).json({ error: err.message });
         return;
       }
-      res.status(201).json({ id: this.lastID });
+      console.log('✅ Viaje creado con ID:', this.lastID);
+      res.status(201).json({ 
+        id: this.lastID,
+        message: 'Viaje creado exitosamente',
+        imagen: imagen,
+        descripcion: descripcion
+      });
     }
   );
 });
 
 // Ruta para actualizar un viaje
-app.put('/viajes/:id', (req, res) => {
-  const { nombre, destino, fecha_inicio, fecha_fin } = req.body;
+app.put('/viajes/:id', upload.single('imagen'), (req, res) => {
   const { id } = req.params;
+  const { nombre, destino, fecha_inicio, fecha_fin, descripcion, imagen_actual } = req.body; // <-- añadimos descripcion
+
+  // Si se subió nueva imagen, usarla. Si no, mantener la actual
+  const imagen = req.file ? req.file.filename : imagen_actual;
+
+  console.log('🔄 Actualizando viaje ID:', id);
+  console.log('📸 Imagen:', imagen);
+  console.log('📝 Datos recibidos:', { nombre, destino, fecha_inicio, fecha_fin, descripcion });
+
   db.run(
-    'UPDATE viajes SET nombre = ?, destino = ?, fecha_inicio = ?, fecha_fin = ? WHERE id = ?',
-    [nombre, destino, fecha_inicio, fecha_fin, id],
+    'UPDATE viajes SET nombre = ?, destino = ?, fecha_inicio = ?, fecha_fin = ?, imagen = ?, descripcion = ? WHERE id = ?', // <-- añadimos descripcion
+    [nombre, destino, fecha_inicio, fecha_fin, imagen, descripcion, id],
     function (err) {
       if (err) {
+        console.error('❌ Error al actualizar viaje:', err);
         res.status(500).json({ error: err.message });
         return;
       }
-      res.status(200).json({ changes: this.changes });
+      console.log('✅ Viaje actualizado. Cambios:', this.changes);
+      res.status(200).json({ 
+        changes: this.changes,
+        message: 'Viaje actualizado exitosamente',
+        imagen: imagen,
+        descripcion: descripcion
+      });
     }
   );
+});
+
+// Ruta para obtener la imagen de un viaje
+app.get('/viajes/:id/imagen', (req, res) => {
+  const { id } = req.params;
+  
+  db.get('SELECT imagen FROM viajes WHERE id = ?', [id], (err, row) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    
+    if (!row || !row.imagen) {
+      res.status(404).json({ error: 'Imagen no encontrada' });
+      return;
+    }
+    
+    const imagePath = path.join(uploadsPath, row.imagen);
+    
+    // Verificar que el archivo existe
+    if (fs.existsSync(imagePath)) {
+      res.sendFile(imagePath);
+    } else {
+      res.status(404).json({ error: 'Archivo de imagen no encontrado' });
+    }
+  });
 });
 
 // Ruta para eliminar un viaje

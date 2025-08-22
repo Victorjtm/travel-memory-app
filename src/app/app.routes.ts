@@ -21,8 +21,8 @@ export const routes: Routes = [
   { path: 'viajes', component: ViajesComponent },
   { path: 'recuerdos', component: RecuerdosComponent },
   { path: 'viajes-previstos', component: ViajesPrevistosComponent },
-  { path: 'formulario-viaje-previsto', component: FormularioViajePrevistoComponent },
-  { path: 'formulario-viaje-previsto/:index', component: FormularioViajePrevistoComponent },
+{ path: 'formulario-viaje-previsto/:id', component: FormularioViajePrevistoComponent }, // id = número (edición) o 'nuevo' (creación)
+
   { path: 'itinerarios/:viajePrevistoId', component: ItinerariosComponent },
   { path: 'formulario-itinerario/:viajePrevistoId', component: FormularioItinerarioComponent },
 

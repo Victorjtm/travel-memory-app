@@ -12,12 +12,10 @@
         <i class="fa fa-book"></i> Álbum
       </button>
 
-
-
-      <button (click)="eliminarViaje(i)" class="btn-eliminar">
+      <button (click)="eliminarViaje(viaje.id)" class="btn-eliminar">
         <i class="fa fa-trash"></i> Eliminar
       </button>
-      <button (click)="irAEditarViaje(i)" class="btn-actualizar">
+      <button (click)="irAEditarViaje(viaje.id)" class="btn-actualizar">
         <i class="fa fa-pencil"></i> Actualizar
       </button>
       <!-- Agregamos un botón que navegue a la página de itinerarios del viaje -->
