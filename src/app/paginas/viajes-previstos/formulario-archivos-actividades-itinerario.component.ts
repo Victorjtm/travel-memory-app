@@ -426,8 +426,7 @@ private actualizarArchivoExistente(): void {
 
     // ✅ Método corregido para parsear metadatos específicos de cada archivo
 private parsearMetadatosArchivo(nombreArchivo: string): Partial<Archivo> {
-  const regex = /(IMG|VID|AUDIO)?[-_]?(\d{4})[-_]?(\d{2})[-_]?(\d{2})[-_]?(\d{2})[-_]?(\d{2})[-_]?(\d{2})/i;
-
+  const regex = /(IMG|VID|AUDIO)?(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/i;
   const match = nombreArchivo.match(regex);
 
   // Metadatos base como fallback

@@ -879,34 +879,58 @@ app.post('/archivos/buscar-coincidencias', upload.single('archivo'), async (req,
   try {
     const { actividadId } = req.body;
 
-    // ✅ NUEVO: función para parsear fecha desde nombre de archivo
+    // 🔹 Función para extraer fecha y hora del nombre del archivo
     function parseDateFromFilename(filename) {
-      // Intentamos detectar patrón tipo VID20250504130146.mp4 => 2025-05-04 13:01:46
       const match = filename.match(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
       if (match) {
         const [_, y, m, d, h, min, s] = match;
-        return new Date(`${y}-${m}-${d}T${h}:${min}:${s}.000Z`).toISOString();
+        return {
+          fecha: `${y}-${m}-${d}`,
+          hora: `${h}:${min}:${s}`
+        };
       }
       return null;
     }
 
     console.log('\n🔍 =============== BUSCAR COINCIDENCIAS ===============');
 
-    // ✅ Obtenemos metadatos desde archivo
+    // 🔹 Obtener metadatos del archivo
     let metadata = await getFileMetadata(req.file.path, req.file.mimetype);
     console.log('📅 Metadatos iniciales:', metadata);
 
-    // ✅ Si no hay fecha, intentamos extraer del nombre del archivo
-    if (!metadata.fecha) {
+    // 🔹 Determinar fecha y hora a usar
+    let fechaUsar, horaUsar;
+
+    // 1️⃣ Intentar usar EXIF si existe
+    if (metadata.DateTimeOriginal) {
+      const d = new Date(metadata.DateTimeOriginal * 1000); // EXIF usualmente en timestamp Unix
+      fechaUsar = d.toISOString().split('T')[0];
+      horaUsar = d.toTimeString().split(' ')[0];
+      console.log('📸 Usando fecha/hora EXIF:', fechaUsar, horaUsar);
+    } 
+    // 2️⃣ Si no hay EXIF, usar nombre del archivo
+    else {
       const fechaFromName = parseDateFromFilename(req.file.originalname);
-      metadata.fecha = fechaFromName || new Date().toISOString();
-      metadata.hora = fechaFromName ? fechaFromName.split('T')[1].split('.')[0] : new Date().toISOString().split('T')[1].split('.')[0];
-      console.log('⚠️ Fecha no encontrada en metadatos, usando nombre de archivo:', metadata);
+      if (fechaFromName) {
+        fechaUsar = fechaFromName.fecha;
+        horaUsar = fechaFromName.hora;
+        console.log('⚠️ Usando fecha/hora del nombre del archivo:', fechaUsar, horaUsar);
+      } 
+      // 3️⃣ Si no hay EXIF ni nombre, usar fecha/hora actual
+      else {
+        const now = new Date();
+        fechaUsar = now.toISOString().split('T')[0];
+        horaUsar = now.toTimeString().split(' ')[0];
+        console.log('⚠️ Usando fecha/hora actual:', fechaUsar, horaUsar);
+      }
     }
+
+    metadata.fecha = fechaUsar;
+    metadata.hora = horaUsar;
 
     console.log('📌 actividadId actual:', actividadId);
 
-    // ✅ Buscar actividades del MISMO DÍA y rango horario
+    // 🔹 Buscar actividades del mismo día y rango horario
     const query = `
       SELECT 
         a.id AS actividadId,
@@ -939,7 +963,7 @@ app.post('/archivos/buscar-coincidencias', upload.single('archivo'), async (req,
       });
     });
 
-    // ✅ Obtener la actividad actual solo por ID
+    // 🔹 Obtener actividad actual solo por ID
     let actividadActual = null;
     if (actividadId) {
       actividadActual = await new Promise(resolve => {
@@ -960,8 +984,12 @@ app.post('/archivos/buscar-coincidencias', upload.single('archivo'), async (req,
             console.error('❌ Error obteniendo actividad actual:', err);
             return resolve(null);
           }
-          // Solo devolver actividadActual si la fecha del archivo está dentro del itinerario
-          if (row && metadata.fecha >= row.fechaInicio && metadata.fecha <= row.fechaFin) {
+
+          const fechaArchivo = new Date(`${metadata.fecha}T${metadata.hora}`);
+          const fechaInicio = new Date(row.fechaInicio);
+          const fechaFin = new Date(row.fechaFin);
+
+          if (row && fechaArchivo >= fechaInicio && fechaArchivo <= fechaFin) {
             resolve(row);
           } else {
             resolve(null);
@@ -987,6 +1015,7 @@ app.post('/archivos/buscar-coincidencias', upload.single('archivo'), async (req,
     res.status(500).json({ error: "Error buscando coincidencias: " + error.message });
   }
 });
+
 
 
 
