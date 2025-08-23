@@ -78,6 +78,30 @@ export class ArchivoService {
     );
   }
 
+  // ✅ AÑADIR al ArchivoService - Método para buscar coincidencias sin archivo
+
+buscarCoincidenciasPorMetadatos(datos: {
+  viajePrevistoId: number;
+  actividadId?: number;
+  nombreArchivo: string;
+  fechaArchivo?: string;
+  horaArchivo?: string;
+}): Observable<{
+  metadata: { fecha: string; hora: string };
+  actividadesCoincidentes: any[];
+  actividadActual: any | null;
+}> {
+  // ✅ Enviar solo metadatos, NO el archivo físico
+  return this.http.post<{
+    metadata: { fecha: string; hora: string };
+    actividadesCoincidentes: any[];
+    actividadActual: any | null;
+  }>(
+    `${this.apiUrl}/buscar-coincidencias-metadatos`,
+    datos
+  );
+}
+
   // ✅ NUEVO MÉTODO - Añadir al final de la clase ArchivoService
   subirArchivosConProgreso(formData: FormData, onProgress?: (porcentaje: number) => void): Promise<any> {
     return new Promise((resolve, reject) => {
@@ -116,3 +140,5 @@ export class ArchivoService {
     });
   }
 }
+
+

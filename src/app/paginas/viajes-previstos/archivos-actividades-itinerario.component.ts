@@ -52,13 +52,29 @@ export class ArchivosComponent implements OnInit {
   this.archivoService.getArchivosPorActividad(this.actividadId).subscribe({
     next: archivos => {
       this.archivos = (archivos ?? []).sort((a, b) => {
-        const toMinutes = (hora?: string): number => {
-          if (!hora) return Number.MAX_SAFE_INTEGER; // los nulos van al final
-          const [h, m] = hora.split(':').map(Number);
-          return h * 60 + m;
+        // Función para convertir fecha y hora a timestamp
+        const toTimestamp = (fechaCreacion?: string, horaCaptura?: string): number => {
+          // Si no hay fecha, poner al final
+          if (!fechaCreacion) return Number.MAX_SAFE_INTEGER;
+          
+          // Crear objeto Date con la fecha
+          const fecha = new Date(fechaCreacion);
+          
+          // Si hay hora, agregarla a la fecha
+          if (horaCaptura) {
+            const [horas, minutos] = horaCaptura.split(':').map(Number);
+            if (!isNaN(horas) && !isNaN(minutos)) {
+              fecha.setHours(horas, minutos, 0, 0);
+            }
+          }
+          
+          return fecha.getTime();
         };
 
-        return toMinutes(a.horaCaptura) - toMinutes(b.horaCaptura); // menor a mayor
+        const timestampA = toTimestamp(a.fechaCreacion, a.horaCaptura);
+        const timestampB = toTimestamp(b.fechaCreacion, b.horaCaptura);
+        
+        return timestampA - timestampB; // Ordenar de menor a mayor (más antiguo primero)
       });
     },
     error: err => {

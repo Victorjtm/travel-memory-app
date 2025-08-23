@@ -26,6 +26,7 @@
     "@fortawesome/angular-fontawesome": "^1.0.0",
     "@fortawesome/fontawesome-svg-core": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
+    "browser-image-compression": "^2.0.2",
     "cors": "^2.8.5",
     "exif-js": "^2.3.0",
     "exif-parser": "^0.1.12",

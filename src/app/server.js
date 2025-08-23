@@ -874,9 +874,156 @@ app.get('/archivos/viaje/:viajeId', (req, res) => {
   });
 });
 
+// ✅ AÑADIR al server.js - Endpoint que NO procese archivos
+
+app.post('/archivos/buscar-coincidencias-metadatos', (req, res) => {
+  try {
+    const { viajePrevistoId, actividadId, nombreArchivo, fechaArchivo, horaArchivo } = req.body;
+    
+    console.log('\n🔍 =============== BUSCAR COINCIDENCIAS (SOLO METADATOS) ===============');
+    console.log('📋 Datos recibidos:', { viajePrevistoId, actividadId, nombreArchivo, fechaArchivo, horaArchivo });
+
+    // ✅ Función para extraer fecha y hora del nombre del archivo
+    function parseDateFromFilename(filename) {
+      const match = filename.match(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+      if (match) {
+        const [_, y, m, d, h, min, s] = match;
+        return {
+          fecha: `${y}-${m}-${d}`,
+          hora: `${h}:${min}:${s}`
+        };
+      }
+      return null;
+    }
+
+    // ✅ Determinar fecha y hora a usar (IGUAL que antes pero sin archivo físico)
+    let fechaUsar, horaUsar;
+
+    // 1️⃣ Usar metadatos enviados por el frontend
+    if (fechaArchivo && horaArchivo) {
+      fechaUsar = fechaArchivo.split('T')[0];
+      horaUsar = horaArchivo;
+      console.log('📅 Usando fecha/hora del frontend:', fechaUsar, horaUsar);
+    }
+    // 2️⃣ Si no, parsear desde nombre del archivo
+    else {
+      const fechaFromName = parseDateFromFilename(nombreArchivo);
+      if (fechaFromName) {
+        fechaUsar = fechaFromName.fecha;
+        horaUsar = fechaFromName.hora;
+        console.log('📝 Usando fecha/hora del nombre del archivo:', fechaUsar, horaUsar);
+      } 
+      // 3️⃣ Fallback a fecha actual
+      else {
+        const now = new Date();
+        fechaUsar = now.toISOString().split('T')[0];
+        horaUsar = now.toTimeString().split(' ')[0];
+        console.log('🕐 Usando fecha/hora actual:', fechaUsar, horaUsar);
+      }
+    }
+
+    const metadata = { fecha: fechaUsar, hora: horaUsar };
+
+    // ✅ MISMA LÓGICA de búsqueda que en el endpoint original
+    const query = `
+      SELECT 
+        a.id AS actividadId,
+        a.nombre AS actividadNombre,
+        a.descripcion AS actividadDescripcion,
+        a.horaInicio,
+        a.horaFin,
+        i.id AS itinerarioId,
+        i.fechaInicio,
+        i.fechaFin,
+        v.id AS viajeId,
+        v.nombre AS nombreViaje,
+        v.destino
+      FROM actividades a
+      JOIN ItinerarioGeneral i ON a.itinerarioId = i.id
+      JOIN viajes v ON a.viajePrevistoId = v.id
+      WHERE 
+        DATE(?) BETWEEN DATE(i.fechaInicio) AND DATE(i.fechaFin)
+        AND TIME(a.horaInicio) <= TIME(?)
+        AND TIME(a.horaFin) >= TIME(?)
+      ORDER BY a.horaInicio ASC
+    `;
+
+    db.all(query, [metadata.fecha, metadata.hora, metadata.hora], (err, actividades) => {
+      if (err) {
+        console.error('❌ Error en consulta de actividades:', err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      console.log(`✅ Encontradas ${actividades.length} actividades coincidentes`);
+
+      // ✅ Obtener actividad actual si se proporciona ID
+      let actividadActual = null;
+      if (actividadId) {
+        const queryActual = `
+          SELECT 
+            a.id AS actividadId, 
+            a.nombre AS actividadNombre, 
+            a.horaInicio, 
+            a.horaFin,
+            i.fechaInicio,
+            i.fechaFin
+          FROM actividades a
+          JOIN ItinerarioGeneral i ON a.itinerarioId = i.id
+          WHERE a.id = ?
+        `;
+        
+        db.get(queryActual, [actividadId], (err, row) => {
+          if (err) {
+            console.error('❌ Error obteniendo actividad actual:', err);
+            return res.json({
+              metadata,
+              actividadesCoincidentes: actividades || [],
+              actividadActual: null
+            });
+          }
+
+          // Validar fechas de la actividad actual
+          if (row) {
+            const fechaArchivo = new Date(`${metadata.fecha}T${metadata.hora}`);
+            const fechaInicio = new Date(row.fechaInicio);
+            const fechaFin = new Date(row.fechaFin);
+
+            if (fechaArchivo >= fechaInicio && fechaArchivo <= fechaFin) {
+              actividadActual = row;
+              console.log('✅ Actividad actual válida:', row.actividadNombre);
+            } else {
+              console.log('❌ Actividad actual no coincide con fecha del archivo');
+            }
+          }
+
+          res.json({
+            metadata,
+            actividadesCoincidentes: actividades || [],
+            actividadActual
+          });
+        });
+      } else {
+        // Sin actividad actual especificada
+        res.json({
+          metadata,
+          actividadesCoincidentes: actividades || [],
+          actividadActual: null
+        });
+      }
+    });
+
+  } catch (error) {
+    console.error('[buscar-coincidencias-metadatos] Error:', error);
+    res.status(500).json({ error: "Error buscando coincidencias: " + error.message });
+  }
+});
+
 // Ruta para buscar coincidencias de actividades por fecha/hora de archivo
 app.post('/archivos/buscar-coincidencias', upload.single('archivo'), async (req, res) => {
+  let archivoTemporal = null;
+  
   try {
+    archivoTemporal = req.file?.path; // Guardar ruta para limpieza posterior
     const { actividadId } = req.body;
 
     // 🔹 Función para extraer fecha y hora del nombre del archivo
@@ -1013,6 +1160,19 @@ app.post('/archivos/buscar-coincidencias', upload.single('archivo'), async (req,
   } catch (error) {
     console.error('[buscar-coincidencias] Error:', error);
     res.status(500).json({ error: "Error buscando coincidencias: " + error.message });
+  } finally {
+    // ✅ LIMPIEZA IMPORTANTE: Eliminar archivo temporal
+    if (archivoTemporal) {
+      try {
+        const fs = require('fs');
+        if (fs.existsSync(archivoTemporal)) {
+          fs.unlinkSync(archivoTemporal);
+          console.log(`🗑️ Archivo temporal eliminado: ${archivoTemporal}`);
+        }
+      } catch (cleanupError) {
+        console.error('❌ Error eliminando archivo temporal:', cleanupError);
+      }
+    }
   }
 });
 
