@@ -16,6 +16,9 @@ import { FormularioActividadComponent } from './paginas/configuracion/actividade
 import { AlbumLibroComponent } from './paginas/viajes-previstos/itinerario/album-libro/album-libro.component';
 import { FormularioArchivosComponent } from './paginas/viajes-previstos/formulario-archivos-actividades-itinerario.component';
 
+// Importar componentes para archivos sin asignación
+import { CrudArchivosSinAsignacionComponent } from './paginas/configuracion/crud-archivos-sin-asignacion/crud-archivos-sin-asignacion/crud-archivos-sin-asignacion.component';
+
 export const routes: Routes = [
   { path: '', component: InicioComponent },
   { path: 'viajes', component: ViajesComponent },
@@ -43,6 +46,16 @@ export const routes: Routes = [
       { path: 'nueva', component: FormularioActividadComponent },
       { path: 'nueva/:idTipo', component: FormularioActividadComponent },
       { path: 'editar/:id', component: FormularioActividadComponent }
+    ]
+  },
+  // 🆕 Nueva ruta para archivos sin asignación con la misma estructura
+  {
+    path: 'configuracion/archivos-sin-asignacion',
+    children: [
+      { path: '', component: CrudArchivosSinAsignacionComponent }
+      // Puedes agregar más rutas hijas aquí si necesitas en el futuro
+      // { path: 'nuevo', component: FormularioArchivoSinAsignacionComponent },
+      // { path: 'editar/:id', component: FormularioArchivoSinAsignacionComponent }
     ]
   },
 

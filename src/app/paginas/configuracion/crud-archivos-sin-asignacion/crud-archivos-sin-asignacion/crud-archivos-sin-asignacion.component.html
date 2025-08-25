@@ -1,0 +1,195 @@
+<div class="contenedor">
+    <h2>Archivos Sin Asignación</h2>
+
+    <!-- Botones de acción principal -->
+    <div class="acciones-principales">
+        <button class="btn-volver" (click)="volverAConfiguracion()">
+            <i class="fa fa-arrow-left"></i> Volver a Configuración
+        </button>
+    </div>
+
+    <!-- Filtros y búsqueda -->
+    <div class="filtros">
+        <input type="text" placeholder="Buscar archivos..." [(ngModel)]="terminoBusqueda" 
+               (input)="filtrarArchivos()" class="buscador">
+        
+        <select [(ngModel)]="filtroTipo" (change)="filtrarArchivos()" class="filtro-select">
+            <option value="">Todos los tipos</option>
+            <option value="imagen">Imágenes</option>
+            <option value="video">Videos</option>
+            <option value="audio">Audios</option>
+            <option value="documento">Documentos</option>
+        </select>
+    </div>
+
+    <hr>
+
+    <!-- Lista de archivos o mensaje si no hay -->
+    <div *ngIf="archivosFiltrados && archivosFiltrados.length > 0; else sinArchivos" class="lista-archivos">
+        <div *ngFor="let archivo of archivosFiltrados" class="archivo-item">
+            <!-- Visualización del archivo multimedia -->
+            <div class="preview-container">
+                <div *ngIf="esImagen(archivo)" class="image-preview">
+                    <img 
+                        [src]="getFileUrl(archivo)" 
+                        [alt]="archivo.descripcion || 'Imagen sin descripción'"
+                        (click)="abrirModal(archivo)"
+                        class="clickable-media"
+                    >
+                </div>
+
+                <div *ngIf="esVideo(archivo)" class="video-preview">
+                    <video 
+                        controls
+                        (click)="abrirModal(archivo)"
+                        class="clickable-media"
+                    >
+                        <source [src]="getFileUrl(archivo)" [type]="'video/' + getFileExtension(archivo.nombreArchivo)">
+                        Tu navegador no soporta el elemento de video.
+                    </video>
+                </div>
+
+                <div *ngIf="esAudio(archivo)" class="audio-preview">
+                    <audio 
+                        controls
+                        (click)="abrirModal(archivo)"
+                        class="clickable-media"
+                    >
+                        <source [src]="getFileUrl(archivo)" [type]="'audio/' + getFileExtension(archivo.nombreArchivo)">
+                        Tu navegador no soporta el elemento de audio.
+                    </audio>
+                </div>
+
+                <div *ngIf="esDocumento(archivo)" class="documento-preview">
+                    <i class="fa fa-file-text-o icono-documento"></i>
+                    <span class="extension">{{ getFileExtension(archivo.nombreArchivo) }}</span>
+                </div>
+            </div>
+
+            <!-- Metadatos del archivo -->
+            <div class="info-archivo">
+                <h3>{{ archivo.nombreArchivo }}</h3>
+                <p><strong>Tipo:</strong> {{ archivo.tipo }}</p>
+                <p><strong>Descripción:</strong> {{ archivo.descripcion || 'Sin descripción' }}</p>
+                <p><strong>Subido el:</strong> {{ archivo.fechaCreacion | date:'dd/MM/yyyy HH:mm' }}</p>
+                
+                <!-- Información de no asignado -->
+                <div class="no-asignado" *ngIf="!archivo.actividadId">
+                    <i class="fa fa-warning"></i> <strong>No asignado a ninguna actividad</strong>
+                </div>
+                
+                <!-- Información de asignación si existe -->
+                <div class="asignado" *ngIf="archivo.actividadId">
+                    <i class="fa fa-check-circle"></i> 
+                    <strong>Asignado a:</strong> Actividad #{{ archivo.actividadId }}
+                </div>
+            </div>
+
+            <!-- Botones de acción: Eliminar o Asociar -->
+            <div class="acciones">
+                <button class="btn-descargar" (click)="descargarArchivo(archivo.id)" title="Descargar">
+                    <i class="fa fa-download"></i>
+                </button>
+                
+                <button class="btn-eliminar" (click)="eliminarArchivo(archivo.id)" title="Eliminar permanentemente">
+                    <i class="fa fa-trash"></i> Eliminar
+                </button>
+                
+                <button class="btn-asignar" (click)="asignarAActividad(archivo)" title="Asignar a actividad"
+                        *ngIf="!archivo.actividadId">
+                    <i class="fa fa-link"></i> Asignar
+                </button>
+                
+                <button class="btn-desasignar" (click)="desasignarDeActividad(archivo.id)" title="Desasignar de actividad"
+                        *ngIf="archivo.actividadId">
+                    <i class="fa fa-unlink"></i> Desasignar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <ng-template #sinArchivos>
+        <p class="sin-archivos"><em>No hay archivos sin asignar.</em></p>
+    </ng-template>
+
+    <!-- Modal de asignación a actividad -->
+    <div class="modal-backdrop" *ngIf="mostrarModalAsignacion" (click)="cerrarModalAsignacion()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+            <button class="btn-cerrar-modal" (click)="cerrarModalAsignacion()">
+                <i class="fa fa-times"></i>
+            </button>
+            
+            <h3>Asignar archivo a actividad</h3>
+            <p>Selecciona una actividad para asignar el archivo:</p>
+            
+            <select [(ngModel)]="actividadSeleccionada" class="select-actividad">
+    <option *ngFor="let actividad of actividades" [value]="actividad.id">
+        {{ actividad.nombre }}
+    </option>
+</select>
+            
+            <div class="modal-acciones">
+                <button class="btn-cancelar" (click)="cerrarModalAsignacion()">Cancelar</button>
+                <button class="btn-confirmar" (click)="confirmarAsignacion()">Asignar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de visualización ampliada -->
+    <div class="modal-backdrop" *ngIf="archivoSeleccionado" (click)="cerrarModal()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+            <button class="btn-cerrar-modal" (click)="cerrarModal()">
+                <i class="fa fa-times"></i>
+            </button>
+            
+            <!-- Contenido del modal según tipo de archivo -->
+            <div *ngIf="esImagen(archivoSeleccionado)">
+                <img [src]="getFileUrl(archivoSeleccionado)" [alt]="archivoSeleccionado.descripcion">
+            </div>
+            
+            <div *ngIf="esVideo(archivoSeleccionado)">
+                <video controls autoplay>
+                    <source [src]="getFileUrl(archivoSeleccionado)" [type]="'video/' + getFileExtension(archivoSeleccionado.nombreArchivo)">
+                    Tu navegador no soporta el elemento de video.
+                </video>
+            </div>
+            
+            <div *ngIf="esAudio(archivoSeleccionado)">
+                <audio controls autoplay>
+                    <source [src]="getFileUrl(archivoSeleccionado)" [type]="'audio/' + getFileExtension(archivoSeleccionado.nombreArchivo)">
+                    Tu navegador no soporta el elemento de audio.
+                </audio>
+            </div>
+            
+            <div *ngIf="esDocumento(archivoSeleccionado)" class="documento-modal">
+                <i class="fa fa-file-text-o icono-documento-grande"></i>
+                <p>Documento: {{ archivoSeleccionado.nombreArchivo }}</p>
+                <button class="btn-descargar" (click)="descargarArchivo(archivoSeleccionado.id)">
+                    <i class="fa fa-download"></i> Descargar documento
+                </button>
+            </div>
+            
+            <div class="modal-info">
+                <h3>{{ archivoSeleccionado.nombreArchivo }}</h3>
+                <p><strong>Descripción:</strong> {{ archivoSeleccionado.descripcion || 'Sin descripción' }}</p>
+                <p><strong>Fecha:</strong> {{ archivoSeleccionado.fechaCreacion | date:'dd/MM/yyyy HH:mm' }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="estadisticas">
+        <div class="estadistica-item">
+            <span class="numero">{{ archivos.length || 0 }}</span>
+            <span class="label">Archivos totales</span>
+        </div>
+        <div class="estadistica-item">
+            <span class="numero">{{ contarArchivosSinAsignar() }}</span>
+            <span class="label">Sin asignar</span>
+        </div>
+        <div class="estadistica-item">
+            <span class="numero">{{ contarArchivosAsignados() }}</span>
+            <span class="label">Asignados</span>
+        </div>
+    </div>
+</div>

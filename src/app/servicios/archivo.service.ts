@@ -12,6 +12,10 @@ export class ArchivoService {
 
   constructor(private http: HttpClient) { }
 
+  getArchivos(): Observable<Archivo[]> {
+  return this.http.get<Archivo[]>(this.apiUrl);
+}
+
   getArchivosPorActividad(actividadId: number): Observable<Archivo[]> {
     return this.http.get<Archivo[]>(`${this.apiUrl}?actividadId=${actividadId}`);
   }
@@ -37,6 +41,10 @@ export class ArchivoService {
   subirArchivos(formData: FormData): Observable<Archivo[]> {
     return this.http.post<Archivo[]>(`${this.apiUrl}/subir`, formData);
   }
+
+  asignarArchivoAActividad(archivoId: number, actividadId: number): Observable<any> {
+  return this.http.put(`${this.apiUrl}/${archivoId}`, { actividadId });
+}
 
   actualizarArchivo(id: number, archivo: Partial<Archivo>): Observable<{updated: number}> {
     return this.http.put<{updated: number}>(`${this.apiUrl}/${id}`, archivo);

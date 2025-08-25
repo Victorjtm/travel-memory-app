@@ -19,6 +19,10 @@ export class ActividadesItinerariosService {
     return this.http.put(`${this.apiUrl}/${id}`, actividad);
   }
 
+  getActividades(): Observable<any[]> {
+  return this.http.get<any[]>(this.apiUrl);
+}
+
   getById(id: number): Observable<any> {
     return this.http.get(`${this.apiUrl}/${id}`);
   }

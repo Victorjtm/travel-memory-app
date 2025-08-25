@@ -75,9 +75,10 @@ export class ViajesPrevistosComponent implements OnInit {
   }
 
   irAlFormulario() {
-    console.log('[NAVIGATE] Ir a formulario de nuevo viaje');
-    this.router.navigate(['/formulario-viaje-previsto']);
-  }
+  console.log('[NAVIGATE] Ir a formulario de nuevo viaje');
+  this.router.navigate(['/formulario-viaje-previsto', 'nuevo']);
+}
+
 
   irAEditarViaje(id: number) {
     console.log('[NAVIGATE] Editar viaje con ID:', id);
