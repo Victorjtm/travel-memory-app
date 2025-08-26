@@ -34,10 +34,12 @@ interface ContextoViaje {
   actividadId?: number;
 }*/
 
+// 1. Actualizar la interface InfoViaje para incluir la imagen
 interface InfoViaje {
   nombre: string;
   fechaInicio?: string;
   fechaFin?: string;
+  imagen?: string;  // ← AÑADIR esta línea
 }
 
 
@@ -116,6 +118,7 @@ export class AlbumLibroComponent implements OnInit, OnDestroy {
     this.cargarDatosAlbum();
   }
 
+// 2. Modificar el método cargarInfoViaje para incluir la imagen
 private async cargarInfoViaje(viajeId: number): Promise<void> {
   try {
     const viaje = await firstValueFrom(
@@ -125,7 +128,8 @@ private async cargarInfoViaje(viajeId: number): Promise<void> {
     this.infoViaje = {
       nombre: viaje.nombre || `Viaje #${viajeId}`,
       fechaInicio: viaje.fechaInicio || '',
-      fechaFin: viaje.fechaFin || ''
+      fechaFin: viaje.fechaFin || '',
+      imagen: viaje.imagen || ''  // ← AÑADIR esta línea
     };
     console.log(this.infoViaje);
 
@@ -134,7 +138,8 @@ private async cargarInfoViaje(viajeId: number): Promise<void> {
     this.infoViaje = {
       nombre: `Viaje #${viajeId}`,
       fechaInicio: '',
-      fechaFin: ''
+      fechaFin: '',
+      imagen: ''  // ← AÑADIR esta línea
     };
   }
 }
@@ -401,6 +406,22 @@ private async cargarInfoViaje(viajeId: number): Promise<void> {
     }
   }
 
+  // 3. Añadir método para obtener la URL completa de la imagen del viaje
+getImagenViajeUrl(): string {
+  if (!this.infoViaje?.imagen) {
+    return '/assets/images/default-trip.jpg'; // Imagen por defecto
+  }
+  
+  // Si la imagen ya es una URL completa
+  if (this.infoViaje.imagen.startsWith('http')) {
+    return this.infoViaje.imagen;
+  }
+  
+  // Si es una ruta relativa, construir la URL completa
+  const nombreArchivo = this.infoViaje.imagen.split(/[\\/]/).pop();
+  return `${environment.apiUrl}/uploads/${nombreArchivo}`;
+}
+
   // Método para navegación directa a una página
   irAPagina(index: number): void {
     if (index >= 0 && index < this.paginas.length) {
@@ -415,13 +436,10 @@ private async cargarInfoViaje(viajeId: number): Promise<void> {
     }
   }
 
-  onImageError(index: number): void {
-    if (this.paginas[index]) {
-      this.paginas[index].imagenCargada = false;
-      // Opcionalmente, establecer una imagen por defecto
-      this.paginas[index].imagen = '/assets/images/no-image.jpg';
-    }
-  }
+onImageError(event: Event) {
+  const img = event.target as HTMLImageElement;
+  img.src = '/assets/images/default-trip.jpg';
+}
 
   // Navegación en modo pantalla completa
   navegarEnFullscreen(direccion: number): void {

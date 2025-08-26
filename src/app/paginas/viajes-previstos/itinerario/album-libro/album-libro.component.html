@@ -15,6 +15,20 @@
 
     <!-- Contenido de la portada -->
     <div class="titulo-portada">
+
+      <!-- IMAGEN DEL VIAJE EN LA PORTADA -->
+<div class="imagen-portada" *ngIf="infoViaje?.imagen">
+  <img [src]="getImagenViajeUrl()" 
+     [alt]="infoViaje?.nombre || 'Imagen del viaje'"
+     class="imagen-viaje"
+     loading="lazy"
+     (error)="onImageError($event)" />
+</div>
+
+<!-- IMAGEN POR DEFECTO SI NO HAY IMAGEN -->
+<div class="imagen-portada imagen-default" *ngIf="!infoViaje?.imagen">
+  <i class="fas fa-camera-retro" aria-hidden="true"></i>
+</div>
       
       <!-- Nombre real del viaje (si está disponible) -->
       <ng-container *ngIf="infoViaje as info">
@@ -99,8 +113,8 @@
           </div>
 
           <img [src]="paginas[paginaActual].imagen" [alt]="paginas[paginaActual].titulo"
-            [class.imagen-cargada]="paginas[paginaActual].imagenCargada" loading="lazy"
-            (load)="onImageLoad(paginaActual)" (error)="onImageError(paginaActual)" />
+  [class.imagen-cargada]="paginas[paginaActual].imagenCargada" loading="lazy"
+  (load)="onImageLoad(paginaActual)" (error)="onImageError($event)" />
 
           <div class="overlay-fullscreen" *ngIf="paginas[paginaActual].imagenCargada">
           </div>
